@@ -23,6 +23,7 @@ authority model.
 | [`composition_royalty_pool`](./composition_royalty_pool) | Composition | Creates canonical Composition-derived pools and folds Composition-addressed funds into them. |
 | [`recording_royalty_pool`](./recording_royalty_pool) | Recording | Creates canonical Recording-derived pools and folds Recording-addressed funds into them. |
 | [`release_revenue_distributor`](./release_revenue_distributor) | Release | Receives or redeems Release-addressed revenue and routes immutable track splits to their Recording addresses. |
+| [`composition_routed_stake`](./composition_routed_stake) | Composition | Custodies Composition-owned Recording shares in a shared `RoutedStake` whose rewards route only to the Composition pool. |
 
 Royalty pools are authorized as Vault plugins, but remain derived from their
 Composition or Recording. That stable parent keeps the pool address independent
