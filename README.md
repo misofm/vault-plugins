@@ -1,40 +1,27 @@
-# Vault Plugins
+# Miso Vault Plugins
 
-> First-party business-logic plugins for Miso protocol objects, authorized by
-> [`misofm/vault`](https://github.com/misofm/vault).
+First-party business-logic packages for Miso protocol objects, authorized by
+[`misofm/vault`](https://github.com/misofm/vault).
 
-Extensions add data to a `Composition`, `Recording`, or `Release`. Plugins add
-bounded business logic by installing on a vault that custodies the object's
-admin capability. Each directory in this repository is an independent Move
-package.
-
-The repository also defines an offchain acceptance and scoring model. The
-vault enforces installed witness identity; clients decide whether the code and
-upgrade authority behind that identity are safe. See [SCORING.md](./SCORING.md).
-
-No existing protocol extension is treated as a plugin merely by moving it into
-this repository. Packages will be added here as they are converted to the vault
-authority model.
+Extensions attach data to a `Composition`, `Recording`, or `Release`. Vault
+plugins temporarily exercise a custodied admin capability to perform a bounded
+workflow. Each directory in this repository is an independently versioned and
+published Move package.
 
 ## Packages
 
-| Package | Target | Authority |
-|---|---|---|
-| [`composition_royalty_pool`](./composition_royalty_pool) | Composition | Creates canonical Composition-derived pools and folds Composition-addressed funds into them. |
-| [`recording_royalty_pool`](./recording_royalty_pool) | Recording | Creates canonical Recording-derived pools and folds Recording-addressed funds into them. |
-| [`release_revenue_distributor`](./release_revenue_distributor) | Release | Receives or redeems Release-addressed revenue and routes immutable track splits to their Recording addresses. |
-| [`composition_routed_stake`](./composition_routed_stake) | Composition | Custodies Composition-owned Recording shares in a shared `RoutedStake` whose rewards route only to the Composition pool. |
+| Package | Target | Purpose |
+|---------|--------|---------|
+| [`composition_royalty_pool`](./composition_royalty_pool) | Composition | Creates the canonical Composition-derived royalty pool and folds Composition-addressed funds into it. |
+| [`recording_royalty_pool`](./recording_royalty_pool) | Recording | Creates the canonical Recording-derived royalty pool and folds Recording-addressed funds into it. |
+| [`release_revenue_distributor`](./release_revenue_distributor) | Release | Receives or redeems Release-addressed revenue and distributes it to the Recording addresses and splits fixed by the tracklist. |
+| [`composition_routed_stake`](./composition_routed_stake) | Composition | Manages Composition-owned Recording shares in a derived `RoutedStake`, with principal and rewards constrained to Composition-controlled destinations. |
 
-Royalty pools are authorized as Vault plugins, but remain derived from their
-Composition or Recording. That stable parent keeps the pool address independent
-of vault replacement or capability migration. The empty derivation key remains
-phantom-typed by both `Share` and `Currency`, preventing a wrong-share pool from
-claiming or blocking the canonical address.
+See each package README for its complete authority and funds-flow declaration.
 
-## Required witness module
+## Trust model
 
-Every plugin package has exactly one canonical installation identity at
-`0xpkg::witness::Witness`:
+Every plugin contains the canonical type `0xpkg::witness::Witness`:
 
 ```move
 module example_plugin::witness;
@@ -46,22 +33,23 @@ public(package) fun new(): Witness {
 }
 ```
 
-`Witness` must have only `drop`. Its constructor is package-only so every
-module in the plugin package can prove authority, while downstream packages
-cannot fabricate that authority.
+The package-only constructor allows plugin modules to borrow through Vault
+without allowing downstream packages to fabricate the witness. A Vault
+authorization identifies the witness's defining package lineage; it does not
+pin one bytecode version. Clients must evaluate the package's source, published
+bytecode, upgrade authority, dependencies, and witness shape before installation.
+See [SCORING.md](./SCORING.md) for the offchain acceptance model.
 
-## Installation shape
+Authority-bearing production operations are `entry fun`s. Read-only views and
+deliberately permissionless primitives remain composable where appropriate.
+Every capability lease is returned before the operation completes.
 
-The plugin owns its installation endpoint and constructs the witness
-internally:
+## Installation
+
+Installation is implemented by the plugin package so it can construct its own
+witness:
 
 ```move
-module example_plugin::example_plugin;
-
-use example_plugin::witness;
-use miso::composition::CompositionAdminCap;
-use vault::vault::{Vault, VaultAdminCap};
-
 entry fun install<CompositionShare>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
@@ -70,17 +58,22 @@ entry fun install<CompositionShare>(
 }
 ```
 
-Authority-bearing plugin operations should usually be `entry fun` so another
-Move package cannot call them as an authority trampoline. Read-only and
-deliberately composable APIs may remain public.
+The matching Vault administrator can revoke the plugin at any time.
 
-## Test requirement
+## Development
 
-Every plugin package includes at least one `sui::test_scenario` end-to-end test
-that crosses transaction boundaries and exercises its installed production
-flow. Focused unit and expected-failure tests supplement that scenario with
-authorization, identity-binding, and destination-integrity checks.
+Run commands from the package directory:
+
+```sh
+cd composition_royalty_pool
+sui move build
+sui move test --coverage
+```
+
+Every plugin includes a multi-transaction `sui::test_scenario` flow plus
+focused authorization and destination-integrity tests. Dependency revisions and
+resolved package identities are committed in `Move.toml` and `Move.lock`.
 
 ## License
 
-[Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) © Miso Labs, Inc.
+[Apache-2.0](./LICENSE)
