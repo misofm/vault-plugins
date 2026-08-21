@@ -16,6 +16,19 @@ No existing protocol extension is treated as a plugin merely by moving it into
 this repository. Packages will be added here as they are converted to the vault
 authority model.
 
+## Packages
+
+| Package | Target | Authority |
+|---|---|---|
+| [`composition_royalty_pool`](./composition_royalty_pool) | Composition | Creates canonical Composition-derived pools and folds Composition-addressed funds into them. |
+| [`recording_royalty_pool`](./recording_royalty_pool) | Recording | Creates canonical Recording-derived pools and folds Recording-addressed funds into them. |
+
+Royalty pools are authorized as Vault plugins, but remain derived from their
+Composition or Recording. That stable parent keeps the pool address independent
+of vault replacement or capability migration. The empty derivation key remains
+phantom-typed by both `Share` and `Currency`, preventing a wrong-share pool from
+claiming or blocking the canonical address.
+
 ## Required witness module
 
 Every plugin package has exactly one canonical installation identity at
@@ -51,7 +64,7 @@ entry fun install<CompositionShare>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
-    vault.install_plugin(vault_admin_cap, witness::new())
+    vault.authorize_plugin(vault_admin_cap, witness::new())
 }
 ```
 
