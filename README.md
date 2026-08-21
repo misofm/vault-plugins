@@ -16,6 +16,21 @@ No existing protocol extension is treated as a plugin merely by moving it into
 this repository. Packages will be added here as they are converted to the vault
 authority model.
 
+## Packages
+
+| Package | Target | Authority |
+|---|---|---|
+| [`composition_royalty_pool`](./composition_royalty_pool) | Composition | Creates canonical Composition-derived pools and folds Composition-addressed funds into them. |
+| [`recording_royalty_pool`](./recording_royalty_pool) | Recording | Creates canonical Recording-derived pools and folds Recording-addressed funds into them. |
+| [`release_revenue_distributor`](./release_revenue_distributor) | Release | Receives or redeems Release-addressed revenue and routes immutable track splits to their Recording addresses. |
+| [`composition_routed_stake`](./composition_routed_stake) | Composition | Custodies Composition-owned Recording shares in a shared `RoutedStake` whose rewards route only to the Composition pool. |
+
+Royalty pools are authorized as Vault plugins, but remain derived from their
+Composition or Recording. That stable parent keeps the pool address independent
+of vault replacement or capability migration. The empty derivation key remains
+phantom-typed by both `Share` and `Currency`, preventing a wrong-share pool from
+claiming or blocking the canonical address.
+
 ## Required witness module
 
 Every plugin package has exactly one canonical installation identity at
@@ -51,13 +66,20 @@ entry fun install<CompositionShare>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
-    vault.install_plugin(vault_admin_cap, witness::new())
+    vault.authorize_plugin(vault_admin_cap, witness::new())
 }
 ```
 
 Authority-bearing plugin operations should usually be `entry fun` so another
 Move package cannot call them as an authority trampoline. Read-only and
 deliberately composable APIs may remain public.
+
+## Test requirement
+
+Every plugin package includes at least one `sui::test_scenario` end-to-end test
+that crosses transaction boundaries and exercises its installed production
+flow. Focused unit and expected-failure tests supplement that scenario with
+authorization, identity-binding, and destination-integrity checks.
 
 ## License
 

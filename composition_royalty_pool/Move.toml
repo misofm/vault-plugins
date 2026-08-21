@@ -1,0 +1,11 @@
+[package]
+name = "composition_royalty_pool"
+edition = "2024"
+license = "Apache 2.0"
+authors = ["Miso Labs, Inc. (build@miso.network)"]
+
+[dependencies]
+miso = { git = "https://github.com/misonetwork/protocol.git", rev = "ecb3da52c14912e257f00b30185c598e92ffc5e3" }
+vault = { git = "https://github.com/misofm/vault.git", rev = "2c799916e45befaa471ccef1918e5b8c42aeddc4" }
+hikida = { git = "https://github.com/unconfirmedlabs/hikida.git", rev = "e88c6fa88348bc2764823cf3666d7ca5e08b2f4f" }
+royalty_pool = { git = "https://github.com/misonetwork/royalty-pool.git", rev = "8470e492252b56da563a5b251e204ee090149724" }
