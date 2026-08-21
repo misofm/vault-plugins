@@ -22,6 +22,7 @@ authority model.
 |---|---|---|
 | [`composition_royalty_pool`](./composition_royalty_pool) | Composition | Creates canonical Composition-derived pools and folds Composition-addressed funds into them. |
 | [`recording_royalty_pool`](./recording_royalty_pool) | Recording | Creates canonical Recording-derived pools and folds Recording-addressed funds into them. |
+| [`release_revenue_distributor`](./release_revenue_distributor) | Release | Receives or redeems Release-addressed revenue and routes immutable track splits to their Recording addresses. |
 
 Royalty pools are authorized as Vault plugins, but remain derived from their
 Composition or Recording. That stable parent keeps the pool address independent
@@ -71,6 +72,13 @@ entry fun install<CompositionShare>(
 Authority-bearing plugin operations should usually be `entry fun` so another
 Move package cannot call them as an authority trampoline. Read-only and
 deliberately composable APIs may remain public.
+
+## Test requirement
+
+Every plugin package includes at least one `sui::test_scenario` end-to-end test
+that crosses transaction boundaries and exercises its installed production
+flow. Focused unit and expected-failure tests supplement that scenario with
+authorization, identity-binding, and destination-integrity checks.
 
 ## License
 

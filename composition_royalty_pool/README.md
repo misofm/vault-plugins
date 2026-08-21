@@ -50,6 +50,9 @@ cap, Vault receipt, witness, or a privileged reference.
 
 ## Build and test
 
+The package includes `sui::test_scenario` flows covering canonical shared-pool
+creation and cross-transaction receive/redeem deposits.
+
 ```sh
 sui move build
 sui move test --coverage
