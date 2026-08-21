@@ -8,6 +8,10 @@ bounded business logic by installing on a vault that custodies the object's
 admin capability. Each directory in this repository is an independent Move
 package.
 
+The repository also defines an offchain acceptance and scoring model. The
+vault enforces installed witness identity; clients decide whether the code and
+upgrade authority behind that identity are safe. See [SCORING.md](./SCORING.md).
+
 No existing protocol extension is treated as a plugin merely by moving it into
 this repository. Packages will be added here as they are converted to the vault
 authority model.
