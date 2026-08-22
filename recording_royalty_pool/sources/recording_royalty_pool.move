@@ -19,8 +19,8 @@ use vault::vault::{Self, Vault, VaultAdminCap};
 
 // === Errors ===
 
-#[error]
-const ENotVaultAdmin: vector<u8> = b"VaultAdminCap does not belong to this Vault";
+/// The VaultAdminCap belongs to another Vault.
+const ENotVaultAdmin: u64 = 0;
 
 // === Installation ===
 

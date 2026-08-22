@@ -16,8 +16,9 @@ use sui::coin_registry::Currency;
 use sui::test_scenario;
 use vault::vault::{Self, Vault, VaultAdminCap};
 
-const EPluginNotAuthorized: u64 = 2;
+const ENotVaultAdmin: u64 = 0;
 const EPoolNotDerivedFromParent: u64 = 0;
+const EPluginNotAuthorized: u64 = 2;
 
 public struct CURRENCY() has drop;
 /// Placeholder share type for a foreign parent object used to derive a
@@ -180,7 +181,7 @@ fun composition_revenue_paths_are_forced_into_canonical_pool() {
 /// On-chain exactly one CompositionAdminCap exists per share type, so a second
 /// same-typed Vault can never exist; this pins `assert_admin` as
 /// defense-in-depth using synthetic duplicate objects.
-#[test, expected_failure]
+#[test, expected_failure(abort_code = ENotVaultAdmin, location = plugin)]
 fun foreign_vault_admin_cannot_initialize_pool() {
     let ctx = &mut tx_context::dummy();
     let (mut composition_a, cap_a) = composition::new_for_testing<Share>("A", 1_000, ctx);
