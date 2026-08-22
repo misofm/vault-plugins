@@ -22,25 +22,31 @@ const EUnauthorized: u64 = 0;
 
 public struct RECORDING_SHARE_A() has drop;
 public struct RECORDING_SHARE_B() has drop;
+public struct RECORDING_SHARE_C() has drop;
+public struct RECORDING_SHARE_D() has drop;
 public struct COMPOSITION_SHARE() has drop;
 public struct CURRENCY() has drop;
 
-fun fixture(
+/// The fixture is generic over the recording share types so tests needing two
+/// releases never duplicate a share type across recordings — a state that
+/// cannot exist on-chain (one object per share type, enforced by the currency
+/// issuance gates). All recordings belong to the same composition.
+fun fixture<RA, RB>(
+    composition_id: ID,
     ctx: &mut TxContext,
 ): (
     Release,
     Vault<ReleaseAdminCap>,
     VaultAdminCap<ReleaseAdminCap>,
-    Recording<RECORDING_SHARE_A, COMPOSITION_SHARE>,
-    RecordingAdminCap<RECORDING_SHARE_A>,
-    Recording<RECORDING_SHARE_B, COMPOSITION_SHARE>,
-    RecordingAdminCap<RECORDING_SHARE_B>,
+    Recording<RA, COMPOSITION_SHARE>,
+    RecordingAdminCap<RA>,
+    Recording<RB, COMPOSITION_SHARE>,
+    RecordingAdminCap<RB>,
 ) {
-    let composition_id = test_helpers::fake_id(ctx);
     let (recording_a, recording_admin_cap_a) =
-        recording::new_for_testing<RECORDING_SHARE_A, COMPOSITION_SHARE>(composition_id, ctx);
+        recording::new_for_testing<RA, COMPOSITION_SHARE>(composition_id, ctx);
     let (recording_b, recording_admin_cap_b) =
-        recording::new_for_testing<RECORDING_SHARE_B, COMPOSITION_SHARE>(composition_id, ctx);
+        recording::new_for_testing<RB, COMPOSITION_SHARE>(composition_id, ctx);
     let release_id = test_helpers::fake_id(ctx);
     let tracks = vector[
         track::new_for_testing(composition_id, recording_a.id(), release_id, 6000),
@@ -59,14 +65,14 @@ fun fixture(
     )
 }
 
-fun destroy_fixture(
+fun destroy_fixture<RA, RB>(
     release: Release,
     vault: Vault<ReleaseAdminCap>,
     vault_admin_cap: VaultAdminCap<ReleaseAdminCap>,
-    recording_a: Recording<RECORDING_SHARE_A, COMPOSITION_SHARE>,
-    recording_admin_cap_a: RecordingAdminCap<RECORDING_SHARE_A>,
-    recording_b: Recording<RECORDING_SHARE_B, COMPOSITION_SHARE>,
-    recording_admin_cap_b: RecordingAdminCap<RECORDING_SHARE_B>,
+    recording_a: Recording<RA, COMPOSITION_SHARE>,
+    recording_admin_cap_a: RecordingAdminCap<RA>,
+    recording_b: Recording<RB, COMPOSITION_SHARE>,
+    recording_admin_cap_b: RecordingAdminCap<RB>,
 ) {
     let release_admin_cap = vault.destroy(vault_admin_cap);
     destroy(release);
@@ -81,7 +87,7 @@ fun destroy_fixture(
 fun installation_is_explicit_and_revocable() {
     let ctx = &mut tx_context::dummy();
     let (release, mut vault, vault_admin_cap, recording_a, cap_a, recording_b, cap_b) =
-        fixture(ctx);
+        fixture<RECORDING_SHARE_A, RECORDING_SHARE_B>(test_helpers::fake_id(ctx), ctx);
 
     assert!(!plugin::is_installed(&vault));
     plugin::install_for_testing(&mut vault, &vault_admin_cap);
@@ -104,7 +110,7 @@ fun installation_is_explicit_and_revocable() {
 fun revenue_cannot_be_redeemed_before_installation() {
     let ctx = &mut tx_context::dummy();
     let (mut release, mut vault, _vault_admin_cap, _recording_a, _cap_a, _recording_b, _cap_b) =
-        fixture(ctx);
+        fixture<RECORDING_SHARE_A, RECORDING_SHARE_B>(test_helpers::fake_id(ctx), ctx);
 
     plugin::redeem_and_distribute_for_testing<CURRENCY>(&mut vault, &mut release, 1);
     abort
@@ -121,7 +127,7 @@ fun redeemed_revenue_is_forced_to_track_recordings() {
         cap_a,
         mut recording_b,
         cap_b,
-    ) = fixture(ctx);
+    ) = fixture<RECORDING_SHARE_A, RECORDING_SHARE_B>(test_helpers::fake_id(ctx), ctx);
     let release_id = release.id();
     let recording_a_id = recording_a.id();
     let recording_b_id = recording_b.id();
@@ -185,7 +191,10 @@ fun received_coins_are_combined_and_distributed() {
         cap_a,
         mut recording_b,
         cap_b,
-    ) = fixture(scenario.ctx());
+    ) = fixture<RECORDING_SHARE_A, RECORDING_SHARE_B>(
+        test_helpers::fake_id(scenario.ctx()),
+        scenario.ctx(),
+    );
     plugin::install_for_testing(&mut vault, &vault_admin_cap);
 
     let coin_a = coin::from_balance(balance::create_for_testing<CURRENCY>(6_000), scenario.ctx());
@@ -221,6 +230,8 @@ fun received_coins_are_combined_and_distributed() {
 #[test, expected_failure(abort_code = EUnauthorized, location = release)]
 fun release_cannot_use_another_releases_vault() {
     let ctx = &mut tx_context::dummy();
+    // One composition, four distinct recordings — a production-legal state.
+    let composition_id = test_helpers::fake_id(ctx);
     let (
         _release_a,
         mut vault_a,
@@ -229,7 +240,7 @@ fun release_cannot_use_another_releases_vault() {
         _cap_a,
         _recording_b,
         _cap_b,
-    ) = fixture(ctx);
+    ) = fixture<RECORDING_SHARE_A, RECORDING_SHARE_B>(composition_id, ctx);
     let (
         mut release_b,
         _vault_b,
@@ -238,7 +249,7 @@ fun release_cannot_use_another_releases_vault() {
         _cap_c,
         _recording_d,
         _cap_d,
-    ) = fixture(ctx);
+    ) = fixture<RECORDING_SHARE_C, RECORDING_SHARE_D>(composition_id, ctx);
     plugin::install_for_testing(&mut vault_a, &vault_admin_cap_a);
     balance::create_for_testing<CURRENCY>(1).send_funds(release_b.id().to_address());
 

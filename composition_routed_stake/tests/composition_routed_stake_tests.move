@@ -22,6 +22,9 @@ const ENotVaultAdmin: u64 = 1;
 const EPluginNotAuthorized: u64 = 2;
 
 public struct RECORDING_SHARE() has drop;
+/// Placeholder share type for a foreign parent object used to derive a
+/// same-typed but wrongly-parented pool.
+public struct FOREIGN_RECORDING_SHARE() has drop;
 public struct COMPOSITION_SHARE() has drop;
 public struct CURRENCY() has drop;
 
@@ -266,8 +269,10 @@ fun lifecycle_is_disabled_before_installation() {
     abort
 }
 
+/// Anyone can derive a same-typed pool from an unrelated object on-chain;
+/// registration must reject any pool not derived from the supplied Recording.
 #[test, expected_failure(abort_code = EPoolNotForRecording, location = plugin)]
-fun registration_rejects_another_recordings_pool() {
+fun registration_rejects_a_wrong_parent_pool() {
     let ctx = &mut tx_context::dummy();
     let (
         mut composition,
@@ -278,10 +283,15 @@ fun registration_rejects_another_recordings_pool() {
         mut routed,
     ) = local_fixture(ctx);
     plugin::install_for_testing(&mut vault, &vault_admin_cap);
-    let (mut other_recording, other_recording_admin_cap) =
-        recording::new_for_testing<RECORDING_SHARE, COMPOSITION_SHARE>(composition.id(), ctx);
+    // A same-typed pool derived from a foreign parent object — another
+    // recording of the same composition is a production-legal object.
+    let (mut foreign_recording, foreign_recording_cap) =
+        recording::new_for_testing<FOREIGN_RECORDING_SHARE, COMPOSITION_SHARE>(
+            composition.id(),
+            ctx,
+        );
     let mut wrong_pool = pool::new<RECORDING_SHARE, CURRENCY>(
-        other_recording.uid_mut(&other_recording_admin_cap),
+        foreign_recording.uid_mut(&foreign_recording_cap),
     );
 
     plugin::register_for_testing(
@@ -295,6 +305,9 @@ fun registration_rejects_another_recordings_pool() {
     abort
 }
 
+/// On-chain exactly one CompositionAdminCap exists per share type, so a second
+/// same-typed Vault can never exist; this pins `assert_admin` as
+/// defense-in-depth using synthetic duplicate objects.
 #[test, expected_failure(abort_code = ENotVaultAdmin, location = plugin)]
 fun lifecycle_rejects_another_vaults_admin_cap() {
     let ctx = &mut tx_context::dummy();
