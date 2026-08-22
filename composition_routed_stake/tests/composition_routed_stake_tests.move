@@ -20,6 +20,8 @@ use vault::vault::{Self, Vault, VaultAdminCap};
 const EPoolNotForRecording: u64 = 0;
 const ENotVaultAdmin: u64 = 1;
 const EPluginNotAuthorized: u64 = 2;
+const EStakeNotForComposition: u64 = 2;
+const ERecordingNotForComposition: u64 = 3;
 
 public struct RECORDING_SHARE() has drop;
 /// Placeholder share type for a foreign parent object used to derive a
@@ -155,6 +157,7 @@ fun complete_shared_lifecycle_routes_rewards_and_preserves_principal() {
     scenario.next_tx(ADMIN);
     let mut vault = scenario.take_shared<Vault<CompositionAdminCap<COMPOSITION_SHARE>>>();
     let mut composition = scenario.take_shared<Composition<COMPOSITION_SHARE>>();
+    let recording = scenario.take_shared<Recording<RECORDING_SHARE, COMPOSITION_SHARE>>();
     let mut routed = scenario.take_shared<RoutedStake<RECORDING_SHARE, COMPOSITION_SHARE>>();
     let mut recording_pool = scenario.take_shared<RoyaltyPool<RECORDING_SHARE, CURRENCY>>();
     let mut composition_pool = scenario.take_shared<RoyaltyPool<COMPOSITION_SHARE, CURRENCY>>();
@@ -166,6 +169,7 @@ fun complete_shared_lifecycle_routes_rewards_and_preserves_principal() {
     plugin::unregister_for_testing(
         &mut vault,
         &mut composition,
+        &recording,
         &mut routed,
         &mut recording_pool,
         &vault_admin_cap,
@@ -179,6 +183,7 @@ fun complete_shared_lifecycle_routes_rewards_and_preserves_principal() {
     assert!(!routed.has_stake());
     test_scenario::return_shared(vault);
     test_scenario::return_shared(composition);
+    test_scenario::return_shared(recording);
     test_scenario::return_shared(routed);
     test_scenario::return_shared(recording_pool);
     test_scenario::return_shared(composition_pool);
@@ -333,6 +338,98 @@ fun lifecycle_rejects_another_vaults_admin_cap() {
         &other_vault_admin_cap,
         1,
         ctx,
+    );
+    abort
+}
+
+/// The Recording must belong to the supplied Composition. On-chain this
+/// binding always holds when the types unify (one object per share type), so
+/// this pins the plugin-side check as defense-in-depth with a synthetic
+/// mismatched pair.
+#[test, expected_failure(abort_code = ERecordingNotForComposition, location = plugin)]
+fun creation_rejects_a_foreign_compositions_recording() {
+    let ctx = &mut tx_context::dummy();
+    let (mut composition, _recording, _recording_admin_cap, mut vault, vault_admin_cap, _routed) =
+        local_fixture(ctx);
+    plugin::install_for_testing(&mut vault, &vault_admin_cap);
+    let (foreign_recording, _foreign_cap) =
+        recording::new_for_testing<RECORDING_SHARE, COMPOSITION_SHARE>(
+            object::id_from_address(@0xC0),
+            ctx,
+        );
+
+    plugin::create_stake_for_testing(
+        &mut vault,
+        &mut composition,
+        &foreign_recording,
+        &vault_admin_cap,
+        1,
+        ctx,
+    );
+    abort
+}
+
+/// The RoutedStake must be derived from the supplied Composition; the plugin
+/// verifies this itself instead of delegating the check to routed_stake.
+#[test, expected_failure(abort_code = EStakeNotForComposition, location = plugin)]
+fun registration_rejects_a_foreign_compositions_stake() {
+    let ctx = &mut tx_context::dummy();
+    let (mut composition, mut recording, recording_admin_cap, mut vault, vault_admin_cap, _routed) =
+        local_fixture(ctx);
+    plugin::install_for_testing(&mut vault, &vault_admin_cap);
+    // The pool is correctly derived from the Recording, so only the stake
+    // check can fire.
+    let mut pool = pool::new<RECORDING_SHARE, CURRENCY>(recording.uid_mut(&recording_admin_cap));
+    let (mut foreign_composition, foreign_composition_cap) =
+        composition::new_for_testing<COMPOSITION_SHARE>("Foreign", 2_000, ctx);
+    let mut foreign_routed = routed_stake::new<RECORDING_SHARE, COMPOSITION_SHARE>(
+        foreign_composition.uid_mut(&foreign_composition_cap),
+        balance::create_for_testing<RECORDING_SHARE>(200),
+        ctx,
+    );
+
+    plugin::register_for_testing(
+        &mut vault,
+        &mut composition,
+        &recording,
+        &mut foreign_routed,
+        &mut pool,
+        &vault_admin_cap,
+    );
+    abort
+}
+
+/// Unregistration pins the pool to the Recording just like registration does.
+#[test, expected_failure(abort_code = EPoolNotForRecording, location = plugin)]
+fun unregistration_rejects_a_wrong_parent_pool() {
+    let ctx = &mut tx_context::dummy();
+    let (
+        mut composition,
+        recording,
+        _recording_admin_cap,
+        mut vault,
+        vault_admin_cap,
+        mut routed,
+    ) = local_fixture(ctx);
+    plugin::install_for_testing(&mut vault, &vault_admin_cap);
+    // The routed stake is correctly derived from the Composition, so only the
+    // pool check can fire.
+    let (mut foreign_recording, foreign_recording_cap) =
+        recording::new_for_testing<FOREIGN_RECORDING_SHARE, COMPOSITION_SHARE>(
+            composition.id(),
+            ctx,
+        );
+    let mut wrong_pool = pool::new<RECORDING_SHARE, CURRENCY>(
+        foreign_recording.uid_mut(&foreign_recording_cap),
+    );
+
+    plugin::unregister_for_testing(
+        &mut vault,
+        &mut composition,
+        &recording,
+        &mut routed,
+        &mut wrong_pool,
+        &vault_admin_cap,
     );
     abort
 }

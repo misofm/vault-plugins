@@ -24,6 +24,10 @@ use vault::vault::{Vault, VaultAdminCap};
 const EPoolNotForRecording: u64 = 0;
 /// The VaultAdminCap belongs to another Vault.
 const ENotVaultAdmin: u64 = 1;
+/// The RoutedStake is not derived from the supplied Composition.
+const EStakeNotForComposition: u64 = 2;
+/// The Recording does not belong to the supplied Composition.
+const ERecordingNotForComposition: u64 = 3;
 
 // === Installation ===
 
@@ -51,12 +55,16 @@ entry fun uninstall<CompositionShare>(
 entry fun create_stake<RecordingShare, CompositionShare>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     composition: &mut Composition<CompositionShare>,
-    _recording: &Recording<RecordingShare, CompositionShare>,
+    recording: &Recording<RecordingShare, CompositionShare>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
     value: u64,
     ctx: &mut TxContext,
 ) {
     assert_admin(vault, vault_admin_cap);
+    assert!(
+        recording.composition_id() == composition.id(),
+        ERecordingNotForComposition,
+    );
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     let uid = composition.uid_mut(&cap);
     let shares = hikida::redeem_balance<RecordingShare>(uid, value);
@@ -76,6 +84,7 @@ entry fun register<RecordingShare, CompositionShare, Currency>(
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
     assert_admin(vault, vault_admin_cap);
+    assert_stake_for_composition(routed, composition.id());
     assert_pool_for_recording(pool, recording.id());
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     routed.register(composition.uid_mut(&cap), pool);
@@ -86,11 +95,14 @@ entry fun register<RecordingShare, CompositionShare, Currency>(
 entry fun unregister<RecordingShare, CompositionShare, Currency>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     composition: &mut Composition<CompositionShare>,
+    recording: &Recording<RecordingShare, CompositionShare>,
     routed: &mut RoutedStake<RecordingShare, CompositionShare>,
     pool: &mut RoyaltyPool<RecordingShare, Currency>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
     assert_admin(vault, vault_admin_cap);
+    assert_stake_for_composition(routed, composition.id());
+    assert_pool_for_recording(pool, recording.id());
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     routed.unregister(composition.uid_mut(&cap), pool);
     vault.put_back(cap, receipt)
@@ -106,6 +118,7 @@ entry fun unstake<RecordingShare, CompositionShare>(
 ) {
     assert_admin(vault, vault_admin_cap);
     let composition_id = composition.id();
+    assert_stake_for_composition(routed, composition_id);
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     let shares = routed.unstake(composition.uid_mut(&cap));
     vault.put_back(cap, receipt);
@@ -123,6 +136,7 @@ entry fun restake<RecordingShare, CompositionShare>(
     ctx: &mut TxContext,
 ) {
     assert_admin(vault, vault_admin_cap);
+    assert_stake_for_composition(routed, composition.id());
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     let uid = composition.uid_mut(&cap);
     let shares = hikida::redeem_balance<RecordingShare>(uid, value);
@@ -161,6 +175,16 @@ fun assert_pool_for_recording<RecordingShare, Currency>(
     assert!(
         pool.id().to_address() == pool::derived_address<RecordingShare, Currency>(recording_id),
         EPoolNotForRecording,
+    )
+}
+
+fun assert_stake_for_composition<RecordingShare, CompositionShare>(
+    routed: &RoutedStake<RecordingShare, CompositionShare>,
+    composition_id: ID,
+) {
+    assert!(
+        routed.id().to_address() == routed_stake::derived_address<RecordingShare>(composition_id),
+        EStakeNotForComposition,
     )
 }
 
@@ -210,11 +234,12 @@ public fun register_for_testing<RecordingShare, CompositionShare, Currency>(
 public fun unregister_for_testing<RecordingShare, CompositionShare, Currency>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     composition: &mut Composition<CompositionShare>,
+    recording: &Recording<RecordingShare, CompositionShare>,
     routed: &mut RoutedStake<RecordingShare, CompositionShare>,
     pool: &mut RoyaltyPool<RecordingShare, Currency>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
-    unregister(vault, composition, routed, pool, vault_admin_cap)
+    unregister(vault, composition, recording, routed, pool, vault_admin_cap)
 }
 
 #[test_only]
