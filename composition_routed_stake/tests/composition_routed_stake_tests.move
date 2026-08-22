@@ -19,9 +19,13 @@ use vault::vault::{Self, Vault, VaultAdminCap};
 
 const EPoolNotForRecording: u64 = 0;
 const ENotVaultAdmin: u64 = 1;
+const EPluginAlreadyAuthorized: u64 = 1;
 const EPluginNotAuthorized: u64 = 2;
 const EStakeNotForComposition: u64 = 2;
 const ERecordingNotForComposition: u64 = 3;
+// routed_stake error codes.
+const ENoStake: u64 = 1;
+const EStakeExists: u64 = 2;
 
 public struct RECORDING_SHARE() has drop;
 /// Placeholder share type for a foreign parent object used to derive a
@@ -431,5 +435,41 @@ fun unregistration_rejects_a_wrong_parent_pool() {
         &mut wrong_pool,
         &vault_admin_cap,
     );
+    abort
+}
+
+#[test, expected_failure(abort_code = EPluginAlreadyAuthorized, location = vault)]
+fun installation_is_not_idempotent() {
+    let ctx = &mut tx_context::dummy();
+    let (_composition, _recording, _recording_admin_cap, mut vault, vault_admin_cap, _routed) =
+        local_fixture(ctx);
+    plugin::install_for_testing(&mut vault, &vault_admin_cap);
+    plugin::install_for_testing(&mut vault, &vault_admin_cap);
+    abort
+}
+
+#[test, expected_failure(abort_code = EStakeExists, location = routed_stake)]
+fun restake_rejects_a_filled_stake() {
+    let ctx = &mut tx_context::dummy();
+    let (mut composition, _recording, _recording_admin_cap, mut vault, vault_admin_cap, mut routed) =
+        local_fixture(ctx);
+    plugin::install_for_testing(&mut vault, &vault_admin_cap);
+    balance::create_for_testing<RECORDING_SHARE>(1).send_funds(composition.id().to_address());
+
+    plugin::restake_for_testing(&mut vault, &mut composition, &mut routed, &vault_admin_cap, 1, ctx);
+    abort
+}
+
+#[test, expected_failure(abort_code = ENoStake, location = routed_stake)]
+fun unstake_rejects_an_empty_stake() {
+    let ctx = &mut tx_context::dummy();
+    let (mut composition, _recording, _recording_admin_cap, mut vault, vault_admin_cap, mut routed) =
+        local_fixture(ctx);
+    plugin::install_for_testing(&mut vault, &vault_admin_cap);
+
+    // The fresh stake has no registrations, so the first unstake succeeds and
+    // leaves the wrapper empty; the second aborts.
+    plugin::unstake_for_testing(&mut vault, &mut composition, &mut routed, &vault_admin_cap);
+    plugin::unstake_for_testing(&mut vault, &mut composition, &mut routed, &vault_admin_cap);
     abort
 }

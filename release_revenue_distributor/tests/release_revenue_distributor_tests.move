@@ -17,8 +17,9 @@ use sui::event;
 use sui::test_scenario;
 use vault::vault::{Self, Vault, VaultAdminCap};
 
-const EPluginNotAuthorized: u64 = 2;
 const EUnauthorized: u64 = 0;
+const EPluginAlreadyAuthorized: u64 = 1;
+const EPluginNotAuthorized: u64 = 2;
 
 public struct RECORDING_SHARE_A() has drop;
 public struct RECORDING_SHARE_B() has drop;
@@ -254,5 +255,15 @@ fun release_cannot_use_another_releases_vault() {
     balance::create_for_testing<CURRENCY>(1).send_funds(release_b.id().to_address());
 
     plugin::redeem_and_distribute_for_testing<CURRENCY>(&mut vault_a, &mut release_b, 1);
+    abort
+}
+
+#[test, expected_failure(abort_code = EPluginAlreadyAuthorized, location = vault)]
+fun installation_is_not_idempotent() {
+    let ctx = &mut tx_context::dummy();
+    let (_release, mut vault, vault_admin_cap, _recording_a, _cap_a, _recording_b, _cap_b) =
+        fixture<RECORDING_SHARE_A, RECORDING_SHARE_B>(test_helpers::fake_id(ctx), ctx);
+    plugin::install_for_testing(&mut vault, &vault_admin_cap);
+    plugin::install_for_testing(&mut vault, &vault_admin_cap);
     abort
 }

@@ -18,7 +18,10 @@ use vault::vault::{Self, Vault, VaultAdminCap};
 
 const ENotVaultAdmin: u64 = 0;
 const EPoolNotDerivedFromParent: u64 = 0;
+const EPluginAlreadyAuthorized: u64 = 1;
 const EPluginNotAuthorized: u64 = 2;
+
+const STRANGER: address = @0x51;
 
 public struct CURRENCY() has drop;
 /// Placeholder share type for a foreign parent object used to derive a
@@ -218,4 +221,49 @@ fun composition_revenue_cannot_enter_a_wrong_parent_pool() {
         1,
     );
     abort
+}
+
+#[test, expected_failure(abort_code = EPluginAlreadyAuthorized, location = vault)]
+fun installation_is_not_idempotent() {
+    let ctx = &mut tx_context::dummy();
+    let (_composition, _currency, mut vault, vault_admin_cap, _shares) = fixture(ctx);
+    plugin::install_for_testing(&mut vault, &vault_admin_cap);
+    plugin::install_for_testing(&mut vault, &vault_admin_cap);
+    abort
+}
+
+/// The crank needs no capability: a sender holding nothing can fold
+/// Composition-addressed funds into the canonical pool.
+#[test]
+fun strangers_can_crank_revenue_into_the_pool() {
+    let mut scenario = test_scenario::begin(@0x0);
+    let (mut composition, currency, mut vault, vault_admin_cap, mut shares) =
+        fixture(scenario.ctx());
+    let composition_id = composition.id();
+    let pool_id = object::id_from_address(plugin::pool_address<Share, CURRENCY>(&composition));
+
+    plugin::install_for_testing(&mut vault, &vault_admin_cap);
+    plugin::initialize_pool_for_testing<Share, CURRENCY>(
+        &mut vault,
+        &mut composition,
+        &vault_admin_cap,
+    );
+    balance::create_for_testing<CURRENCY>(1_000).send_funds(composition_id.to_address());
+
+    // The crank transaction is sent by an address holding no capability.
+    scenario.next_tx(STRANGER);
+    let mut pool: RoyaltyPool<Share, CURRENCY> = scenario.take_shared_by_id(pool_id);
+    let mut holder = stake::new(shares.split(100), scenario.ctx());
+    pool.register_stake(&mut holder);
+    plugin::redeem_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 1_000);
+    let reward = pool.claim_rewards(&mut holder);
+    assert_eq!(reward.value(), 1_000);
+
+    pool.unregister_stake(&mut holder);
+    test_scenario::return_shared(pool);
+    balance::destroy_for_testing(stake::destroy(holder));
+    balance::destroy_for_testing(reward);
+    plugin::uninstall_for_testing(&mut vault, &vault_admin_cap);
+    destroy_fixture(composition, currency, vault, vault_admin_cap, shares);
+    scenario.end();
 }
