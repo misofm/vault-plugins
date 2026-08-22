@@ -68,7 +68,7 @@ entry fun receive_and_deposit<RecordingShare, CompositionShare, Currency>(
     pool: &mut RoyaltyPool<RecordingShare, Currency>,
     coins: vector<Receiving<Coin<Currency>>>,
 ) {
-    pool.assert_derived_from(recording.id());
+    pool.assert_derived_from(object::id(recording));
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     let balance = hikida::receive_balance(recording.uid_mut(&cap), coins);
     vault.put_back(cap, receipt);
@@ -83,7 +83,7 @@ entry fun redeem_and_deposit<RecordingShare, CompositionShare, Currency>(
     pool: &mut RoyaltyPool<RecordingShare, Currency>,
     value: u64,
 ) {
-    pool.assert_derived_from(recording.id());
+    pool.assert_derived_from(object::id(recording));
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     let balance = hikida::redeem_balance<Currency>(recording.uid_mut(&cap), value);
     vault.put_back(cap, receipt);
@@ -102,7 +102,7 @@ public fun is_installed<RecordingShare>(
 public fun pool_address<RecordingShare, CompositionShare, Currency>(
     recording: &Recording<RecordingShare, CompositionShare>,
 ): address {
-    pool::derived_address<RecordingShare, Currency>(recording.id())
+    pool::derived_address<RecordingShare, Currency>(object::id(recording))
 }
 
 // === Private helpers ===
@@ -111,7 +111,7 @@ fun assert_admin<RecordingShare>(
     vault: &Vault<RecordingAdminCap<RecordingShare>>,
     vault_admin_cap: &VaultAdminCap<RecordingAdminCap<RecordingShare>>,
 ) {
-    assert!(vault.id() == vault_admin_cap.vault_id(), ENotVaultAdmin)
+    assert!(object::id(vault) == vault_admin_cap.vault_id(), ENotVaultAdmin)
 }
 
 // === Test helpers ===

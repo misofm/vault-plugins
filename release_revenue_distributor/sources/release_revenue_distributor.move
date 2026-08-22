@@ -96,7 +96,7 @@ public fun is_installed(vault: &Vault<ReleaseAdminCap>): bool {
 /// track splits sum to 10,000 BPS, only per-track flooring can remain; that
 /// remainder is returned to the Release address for a later distribution.
 fun distribute<Currency>(release: &Release, mut revenue: Balance<Currency>) {
-    let release_id = release.id();
+    let release_id = object::id(release);
     let total_input = revenue.value();
     let mut total_distributed = 0;
     let mut track_index = 0;

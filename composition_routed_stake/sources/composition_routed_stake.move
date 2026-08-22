@@ -62,7 +62,7 @@ entry fun create_stake<RecordingShare, CompositionShare>(
 ) {
     assert_admin(vault, vault_admin_cap);
     assert!(
-        recording.composition_id() == composition.id(),
+        recording.composition_id() == object::id(composition),
         ERecordingNotForComposition,
     );
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
@@ -84,8 +84,8 @@ entry fun register<RecordingShare, CompositionShare, Currency>(
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
     assert_admin(vault, vault_admin_cap);
-    assert_stake_for_composition(routed, composition.id());
-    assert_pool_for_recording(pool, recording.id());
+    assert_stake_for_composition(routed, object::id(composition));
+    assert_pool_for_recording(pool, object::id(recording));
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     routed.register(composition.uid_mut(&cap), pool);
     vault.put_back(cap, receipt)
@@ -101,8 +101,8 @@ entry fun unregister<RecordingShare, CompositionShare, Currency>(
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
     assert_admin(vault, vault_admin_cap);
-    assert_stake_for_composition(routed, composition.id());
-    assert_pool_for_recording(pool, recording.id());
+    assert_stake_for_composition(routed, object::id(composition));
+    assert_pool_for_recording(pool, object::id(recording));
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     routed.unregister(composition.uid_mut(&cap), pool);
     vault.put_back(cap, receipt)
@@ -117,7 +117,7 @@ entry fun unstake<RecordingShare, CompositionShare>(
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
     assert_admin(vault, vault_admin_cap);
-    let composition_id = composition.id();
+    let composition_id = object::id(composition);
     assert_stake_for_composition(routed, composition_id);
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     let shares = routed.unstake(composition.uid_mut(&cap));
@@ -136,7 +136,7 @@ entry fun restake<RecordingShare, CompositionShare>(
     ctx: &mut TxContext,
 ) {
     assert_admin(vault, vault_admin_cap);
-    assert_stake_for_composition(routed, composition.id());
+    assert_stake_for_composition(routed, object::id(composition));
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     let uid = composition.uid_mut(&cap);
     let shares = hikida::redeem_balance<RecordingShare>(uid, value);
@@ -156,7 +156,7 @@ public fun is_installed<CompositionShare>(
 public fun stake_address<RecordingShare, CompositionShare>(
     composition: &Composition<CompositionShare>,
 ): address {
-    routed_stake::derived_address<RecordingShare>(composition.id())
+    routed_stake::derived_address<RecordingShare>(object::id(composition))
 }
 
 // === Private helpers ===
@@ -165,7 +165,7 @@ fun assert_admin<CompositionShare>(
     vault: &Vault<CompositionAdminCap<CompositionShare>>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
-    assert!(vault.id() == vault_admin_cap.vault_id(), ENotVaultAdmin)
+    assert!(object::id(vault) == vault_admin_cap.vault_id(), ENotVaultAdmin)
 }
 
 fun assert_pool_for_recording<RecordingShare, Currency>(
@@ -173,7 +173,7 @@ fun assert_pool_for_recording<RecordingShare, Currency>(
     recording_id: ID,
 ) {
     assert!(
-        pool.id().to_address() == pool::derived_address<RecordingShare, Currency>(recording_id),
+        object::id(pool).to_address() == pool::derived_address<RecordingShare, Currency>(recording_id),
         EPoolNotForRecording,
     )
 }
@@ -183,7 +183,7 @@ fun assert_stake_for_composition<RecordingShare, CompositionShare>(
     composition_id: ID,
 ) {
     assert!(
-        routed.id().to_address() == routed_stake::derived_address<RecordingShare>(composition_id),
+        object::id(routed).to_address() == routed_stake::derived_address<RecordingShare>(composition_id),
         EStakeNotForComposition,
     )
 }

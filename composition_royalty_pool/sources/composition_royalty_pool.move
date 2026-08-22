@@ -68,7 +68,7 @@ entry fun receive_and_deposit<CompositionShare, Currency>(
     pool: &mut RoyaltyPool<CompositionShare, Currency>,
     coins: vector<Receiving<Coin<Currency>>>,
 ) {
-    pool.assert_derived_from(composition.id());
+    pool.assert_derived_from(object::id(composition));
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     let balance = hikida::receive_balance(composition.uid_mut(&cap), coins);
     vault.put_back(cap, receipt);
@@ -83,7 +83,7 @@ entry fun redeem_and_deposit<CompositionShare, Currency>(
     pool: &mut RoyaltyPool<CompositionShare, Currency>,
     value: u64,
 ) {
-    pool.assert_derived_from(composition.id());
+    pool.assert_derived_from(object::id(composition));
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     let balance = hikida::redeem_balance<Currency>(composition.uid_mut(&cap), value);
     vault.put_back(cap, receipt);
@@ -102,7 +102,7 @@ public fun is_installed<CompositionShare>(
 public fun pool_address<CompositionShare, Currency>(
     composition: &Composition<CompositionShare>,
 ): address {
-    pool::derived_address<CompositionShare, Currency>(composition.id())
+    pool::derived_address<CompositionShare, Currency>(object::id(composition))
 }
 
 // === Private helpers ===
@@ -111,7 +111,7 @@ fun assert_admin<CompositionShare>(
     vault: &Vault<CompositionAdminCap<CompositionShare>>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
-    assert!(vault.id() == vault_admin_cap.vault_id(), ENotVaultAdmin)
+    assert!(object::id(vault) == vault_admin_cap.vault_id(), ENotVaultAdmin)
 }
 
 // === Test helpers ===

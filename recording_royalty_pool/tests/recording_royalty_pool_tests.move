@@ -104,7 +104,7 @@ fun pool_parent_is_recording_and_survives_vault_replacement() {
     let mut scenario = test_scenario::begin(@0x0);
     let (composition, mut recording, currency, mut vault, vault_admin_cap, shares) =
         fixture(scenario.ctx());
-    let recording_id = recording.id();
+    let recording_id = object::id(&recording);
     let pool_address =
         plugin::pool_address<Share, COMPOSITION_SHARE, CURRENCY>(&recording);
 
@@ -137,7 +137,7 @@ fun recording_revenue_paths_are_forced_into_canonical_pool() {
     let mut scenario = test_scenario::begin(@0x0);
     let (composition, mut recording, currency, mut vault, vault_admin_cap, mut shares) =
         fixture(scenario.ctx());
-    let recording_id = recording.id();
+    let recording_id = object::id(&recording);
     let pool_id = object::id_from_address(
         plugin::pool_address<Share, COMPOSITION_SHARE, CURRENCY>(&recording),
     );
@@ -234,7 +234,7 @@ fun recording_revenue_cannot_enter_a_wrong_parent_pool() {
     // recording of the same composition is a production-legal object.
     let (mut foreign, foreign_cap) =
         recording::new_for_testing<FOREIGN_RECORDING_SHARE, COMPOSITION_SHARE>(
-            composition.id(),
+            object::id(&composition),
             ctx,
         );
     let mut wrong_pool = pool::new<Share, CURRENCY>(foreign.uid_mut(&foreign_cap));
@@ -264,7 +264,7 @@ fun strangers_can_crank_revenue_into_the_pool() {
     let mut scenario = test_scenario::begin(@0x0);
     let (composition, mut recording, currency, mut vault, vault_admin_cap, mut shares) =
         fixture(scenario.ctx());
-    let recording_id = recording.id();
+    let recording_id = object::id(&recording);
     let pool_id = object::id_from_address(
         plugin::pool_address<Share, COMPOSITION_SHARE, CURRENCY>(&recording),
     );

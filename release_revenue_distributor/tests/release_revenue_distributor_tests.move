@@ -50,8 +50,8 @@ fun fixture<RA, RB>(
         recording::new_for_testing<RB, COMPOSITION_SHARE>(composition_id, ctx);
     let release_id = test_helpers::fake_id(ctx);
     let tracks = vector[
-        track::new_for_testing(composition_id, recording_a.id(), release_id, 6000),
-        track::new_for_testing(composition_id, recording_b.id(), release_id, 4000),
+        track::new_for_testing(composition_id, object::id(&recording_a), release_id, 6000),
+        track::new_for_testing(composition_id, object::id(&recording_b), release_id, 4000),
     ];
     let (release, release_admin_cap) = release::new_for_testing("Album", tracks, ctx);
     let (vault, vault_admin_cap) = vault::new(release_admin_cap, ctx);
@@ -129,9 +129,9 @@ fun redeemed_revenue_is_forced_to_track_recordings() {
         mut recording_b,
         cap_b,
     ) = fixture<RECORDING_SHARE_A, RECORDING_SHARE_B>(test_helpers::fake_id(ctx), ctx);
-    let release_id = release.id();
-    let recording_a_id = recording_a.id();
-    let recording_b_id = recording_b.id();
+    let release_id = object::id(&release);
+    let recording_a_id = object::id(&recording_a);
+    let recording_b_id = object::id(&recording_b);
 
     plugin::install_for_testing(&mut vault, &vault_admin_cap);
     balance::create_for_testing<CURRENCY>(10_001).send_funds(release_id.to_address());
@@ -202,8 +202,8 @@ fun received_coins_are_combined_and_distributed() {
     let coin_b = coin::from_balance(balance::create_for_testing<CURRENCY>(4_000), scenario.ctx());
     let coin_a_id = object::id(&coin_a);
     let coin_b_id = object::id(&coin_b);
-    transfer::public_transfer(coin_a, release.id().to_address());
-    transfer::public_transfer(coin_b, release.id().to_address());
+    transfer::public_transfer(coin_a, object::id(&release).to_address());
+    transfer::public_transfer(coin_b, object::id(&release).to_address());
 
     scenario.next_tx(@0xB);
     let receiving_a = test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(coin_a_id);
@@ -252,7 +252,7 @@ fun release_cannot_use_another_releases_vault() {
         _cap_d,
     ) = fixture<RECORDING_SHARE_C, RECORDING_SHARE_D>(composition_id, ctx);
     plugin::install_for_testing(&mut vault_a, &vault_admin_cap_a);
-    balance::create_for_testing<CURRENCY>(1).send_funds(release_b.id().to_address());
+    balance::create_for_testing<CURRENCY>(1).send_funds(object::id(&release_b).to_address());
 
     plugin::redeem_and_distribute_for_testing<CURRENCY>(&mut vault_a, &mut release_b, 1);
     abort

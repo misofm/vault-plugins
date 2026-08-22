@@ -92,7 +92,7 @@ fun pool_parent_is_composition_and_survives_vault_replacement() {
     let mut scenario = test_scenario::begin(@0x0);
     let (mut composition, currency, mut vault, vault_admin_cap, shares) =
         fixture(scenario.ctx());
-    let composition_id = composition.id();
+    let composition_id = object::id(&composition);
     let pool_address = plugin::pool_address<Share, CURRENCY>(&composition);
 
     plugin::install_for_testing(&mut vault, &vault_admin_cap);
@@ -124,7 +124,7 @@ fun composition_revenue_paths_are_forced_into_canonical_pool() {
     let mut scenario = test_scenario::begin(@0x0);
     let (mut composition, currency, mut vault, vault_admin_cap, mut shares) =
         fixture(scenario.ctx());
-    let composition_id = composition.id();
+    let composition_id = object::id(&composition);
     let pool_id = object::id_from_address(
         plugin::pool_address<Share, CURRENCY>(&composition),
     );
@@ -239,7 +239,7 @@ fun strangers_can_crank_revenue_into_the_pool() {
     let mut scenario = test_scenario::begin(@0x0);
     let (mut composition, currency, mut vault, vault_admin_cap, mut shares) =
         fixture(scenario.ctx());
-    let composition_id = composition.id();
+    let composition_id = object::id(&composition);
     let pool_id = object::id_from_address(plugin::pool_address<Share, CURRENCY>(&composition));
 
     plugin::install_for_testing(&mut vault, &vault_admin_cap);

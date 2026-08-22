@@ -51,7 +51,7 @@ fun complete_shared_lifecycle_routes_rewards_and_preserves_principal() {
     let clock = scenario.take_shared<Clock>();
     let (mut composition, composition_admin_cap) =
         composition::new_for_testing<COMPOSITION_SHARE>("Song", 2_000, scenario.ctx());
-    let composition_id = composition.id();
+    let composition_id = object::id(&composition);
     let (mut recording, recording_admin_cap) =
         recording::new_for_testing<RECORDING_SHARE, COMPOSITION_SHARE>(
             composition_id,
@@ -121,7 +121,7 @@ fun complete_shared_lifecycle_routes_rewards_and_preserves_principal() {
     let mut recording_pool = scenario.take_shared<RoyaltyPool<RECORDING_SHARE, CURRENCY>>();
     let vault_admin_cap =
         scenario.take_from_sender<VaultAdminCap<CompositionAdminCap<COMPOSITION_SHARE>>>();
-    assert_eq!(routed.id().to_address(), routed_address);
+    assert_eq!(object::id(&routed).to_address(), routed_address);
     assert_eq!(routed.value(), 200);
     plugin::register_for_testing(
         &mut vault,
@@ -239,7 +239,7 @@ fun local_fixture(
     let (mut composition, composition_admin_cap) =
         composition::new_for_testing<COMPOSITION_SHARE>("Song", 2_000, ctx);
     let (recording, recording_admin_cap) =
-        recording::new_for_testing<RECORDING_SHARE, COMPOSITION_SHARE>(composition.id(), ctx);
+        recording::new_for_testing<RECORDING_SHARE, COMPOSITION_SHARE>(object::id(&composition), ctx);
     let routed = routed_stake::new<RECORDING_SHARE, COMPOSITION_SHARE>(
         composition.uid_mut(&composition_admin_cap),
         balance::create_for_testing<RECORDING_SHARE>(200),
@@ -296,7 +296,7 @@ fun registration_rejects_a_wrong_parent_pool() {
     // recording of the same composition is a production-legal object.
     let (mut foreign_recording, foreign_recording_cap) =
         recording::new_for_testing<FOREIGN_RECORDING_SHARE, COMPOSITION_SHARE>(
-            composition.id(),
+            object::id(&composition),
             ctx,
         );
     let mut wrong_pool = pool::new<RECORDING_SHARE, CURRENCY>(
@@ -333,7 +333,7 @@ fun lifecycle_rejects_another_vaults_admin_cap() {
     let (_other_composition, other_composition_admin_cap) =
         composition::new_for_testing<COMPOSITION_SHARE>("Other", 2_000, ctx);
     let (_other_vault, other_vault_admin_cap) = vault::new(other_composition_admin_cap, ctx);
-    balance::create_for_testing<RECORDING_SHARE>(1).send_funds(composition.id().to_address());
+    balance::create_for_testing<RECORDING_SHARE>(1).send_funds(object::id(&composition).to_address());
 
     plugin::create_stake_for_testing(
         &mut vault,
@@ -420,7 +420,7 @@ fun unregistration_rejects_a_wrong_parent_pool() {
     // pool check can fire.
     let (mut foreign_recording, foreign_recording_cap) =
         recording::new_for_testing<FOREIGN_RECORDING_SHARE, COMPOSITION_SHARE>(
-            composition.id(),
+            object::id(&composition),
             ctx,
         );
     let mut wrong_pool = pool::new<RECORDING_SHARE, CURRENCY>(
@@ -454,7 +454,7 @@ fun restake_rejects_a_filled_stake() {
     let (mut composition, _recording, _recording_admin_cap, mut vault, vault_admin_cap, mut routed) =
         local_fixture(ctx);
     plugin::install_for_testing(&mut vault, &vault_admin_cap);
-    balance::create_for_testing<RECORDING_SHARE>(1).send_funds(composition.id().to_address());
+    balance::create_for_testing<RECORDING_SHARE>(1).send_funds(object::id(&composition).to_address());
 
     plugin::restake_for_testing(&mut vault, &mut composition, &mut routed, &vault_admin_cap, 1, ctx);
     abort
