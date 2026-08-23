@@ -5,9 +5,10 @@
 **Framework:** pinned rev `06734f6ff0af45d8632a14a4dc4b100197f6b1a2`
 
 **Pinned dependencies** (by git rev, per `Move.toml`/`Move.lock`): `miso`
-(protocol) `7c13e40a`, `vault` `2c799916`, `hikida` `e88c6fa8` (audited
-clean 2026-08-22), `royalty_pool` `8470e492`; transitive `miso_share`
-`047d74d5`, `bps` `26fa571e` (audited clean 2026-08-22).
+(protocol) `c23fe7fc` (re-pinned from `7c13e40a` 2026-08-23), `vault`
+`2c799916`, `hikida` `e88c6fa8` (audited clean 2026-08-22), `royalty_pool`
+`8470e492`; transitive `miso_share` `d67ff8c` (the audited hardening rev),
+`bps` `26fa571e` (audited clean 2026-08-22).
 
 Audit of the vault plugin that creates canonical royalty pools for Miso
 Compositions and folds Composition-addressed funds into them. Verdict:
@@ -119,11 +120,13 @@ survives vault replacement.
 - **`royalty_pool`**: no withdrawal path besides `claim_rewards`;
   `ENoStakedShares` behavior; accumulator math as above.
 - **`miso_share`**: fixed supply of exactly 10¹³ and one currency/cap per
-  share type. The pinned rev (`047d74d`) predates the `ETreasuryCapMismatch`
-  hardening in `share@d67ff8c`; per the `miso_share` audit that fix is
-  defense-in-depth — cap uniqueness already makes the mismatched-cap path
-  unreachable — so the pinned rev is sound, but re-pin to the hardened rev
-  on the next dependency bump.
+  share type. The previously pinned rev (`047d74d`) predated the
+  `ETreasuryCapMismatch` hardening in `share@d67ff8c`; per the `miso_share`
+  audit that fix is defense-in-depth — cap uniqueness already makes the
+  mismatched-cap path unreachable. **Resolved 2026-08-23: re-pinned `miso` to
+  `c23fe7fc`, which pins `miso_share` at exactly
+  `d67ff8cd377db2809fc97455e82e87ff1794073e`** (verified in `Move.lock`);
+  `sui move build && sui move test` green (8/8) at the new pin.
 - **`miso`**: one `CompositionAdminCap` per share type (derived claim +
   treasury-cap consumption in `composition::new`), making type-scoped
   `uid_mut` object-unique in practice.

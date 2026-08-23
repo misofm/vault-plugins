@@ -4,9 +4,10 @@
 **Date:** 2026-08-22 · **Toolchain:** sui 1.77.2 ·
 **Framework:** pinned rev `06734f6ff0af45d8632a14a4dc4b100197f6b1a2`
 
-**Pinned dependencies** (`Move.toml`): `miso` `7c13e40a` · `vault` `2c799916`
-· `hikida` `e88c6fa8` · `royalty_pool` `8470e492` · `routed_stake` `acd5741e`
-(full revs in `Move.toml`).
+**Pinned dependencies** (`Move.toml`): `miso` `c23fe7fc` (re-pinned from
+`7c13e40a` 2026-08-23 for the `miso_share` `d67ff8c` hardening, transitive)
+· `vault` `2c799916` · `hikida` `e88c6fa8` · `royalty_pool` `8470e492` ·
+`routed_stake` `acd5741e` (full revs in `Move.toml`).
 
 Audit of the routed-stake vault plugin. Verdict: **safe to publish — no
 Critical/High/Medium findings.**

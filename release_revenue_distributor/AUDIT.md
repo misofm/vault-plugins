@@ -5,11 +5,12 @@
 **Framework:** pinned rev `06734f6ff0af45d8632a14a4dc4b100197f6b1a2`
 
 Pinned dependencies (`Move.lock`): `miso` (protocol)
-`7c13e40a2613fd01a42353c2e98e614cfa671449`, `vault`
+`c23fe7fc4323f5ed8321be209a5efc08b6a1691a` (re-pinned from `7c13e40a`
+2026-08-23), `vault`
 `2c799916e45befaa471ccef1918e5b8c42aeddc4`, `hikida`
 `e88c6fa88348bc2764823cf3666d7ca5e08b2f4f`; transitive: `bps`
 `26fa571e3d8fc79125e6a50f5b735c939a5251f6`, `miso_share`
-`047d74d590372c9a360cdc164f84e0770210f42f`.
+`d67ff8cd377db2809fc97455e82e87ff1794073e` (the audited hardening rev).
 
 Verdict: **safe to publish as-is — no Critical/High/Medium findings.**
 

@@ -4,14 +4,15 @@
 **Toolchain:** sui 1.77.2 · **Framework:** pinned rev
 `06734f6ff0af45d8632a14a4dc4b100197f6b1a2`
 
-Pinned deps (`Move.toml`/`Move.lock`): `miso` (protocol) `7c13e40a`,
-`vault` `2c799916`, `royalty_pool` `8470e492`, `hikida` `e88c6fa8`;
-transitive: `miso_share` `047d74d5`, `bps` `26fa571e` (full revs in
-`Move.lock`).
+Pinned deps (`Move.toml`/`Move.lock`): `miso` (protocol) `c23fe7fc`
+(re-pinned from `7c13e40a` 2026-08-23), `vault` `2c799916`, `royalty_pool`
+`8470e492`, `hikida` `e88c6fa8`; transitive: `miso_share` `d67ff8c` (the
+audited hardening rev), `bps` `26fa571e` (full revs in `Move.lock`).
 
 Audit of the vault plugin that creates and funds canonical royalty pools for
 Miso Recordings. Verdict: **safe to install as-is — no Critical/High/Medium
-issues.** One dependency advisory under Load-bearing assumptions.
+issues.** The one dependency advisory under Load-bearing assumptions
+(`miso_share` pin) was resolved 2026-08-23 by the re-pin above.
 
 ## What it is
 
@@ -120,14 +121,16 @@ vault replacement. Same shape and trust surface as `composition_royalty_pool`.
 ## Load-bearing assumptions
 
 - **Share supply ≤ 10¹³**, inherited from `miso_share` fixed issuance; the
-  pool's precision argument (`pool.move:49-58`) depends on it. Note: the
-  pinned `miso_share` (`047d74d5`) **predates** the audited hardening
-  (`d67ff8c`, the `ETreasuryCapMismatch` cap binding — see the `miso_share`
-  AUDIT). At the pinned rev the supply bound still holds via treasury-cap
-  uniqueness, but the migrated-currency `RegulatedState::Unknown` fail-open
-  is un-asserted: a legacy-migrated share currency concealing a `DenyCapV2`
-  would pass `initialize` (freeze risk, not a supply/pool-math risk).
-  Advisory: re-pin once `miso` depends on `miso_share ≥ d67ff8c`.
+  pool's precision argument (`pool.move:49-58`) depends on it. The previously
+  pinned `miso_share` (`047d74d5`) predated the audited hardening (`d67ff8c`,
+  the `ETreasuryCapMismatch` cap binding — see the `miso_share` AUDIT): at
+  that rev the migrated-currency `RegulatedState::Unknown` fail-open was
+  un-asserted, so a legacy-migrated share currency concealing a `DenyCapV2`
+  would have passed `initialize` (freeze risk, not a supply/pool-math risk).
+  **Resolved 2026-08-23: re-pinned `miso` to `c23fe7fc`, which pins
+  `miso_share` at exactly `d67ff8cd377db2809fc97455e82e87ff1794073e`**
+  (verified in `Move.lock`); `sui move build && sui move test` green (8/8) at
+  the new pin.
 - **`bps` pinned rev `26fa571e` is an ancestor of its audited rev
   `26e5ee2b`**; the delta is the u256 totality rewrite — immaterial here, all
   royalty arithmetic being u64-width. `bps` and `hikida` were independently
