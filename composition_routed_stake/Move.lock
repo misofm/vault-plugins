@@ -25,11 +25,11 @@ deps = { std = "MoveStdlib", sui = "Sui" }
 [pinned.testnet.composition_routed_stake]
 source = { root = true }
 use_environment = "testnet"
-manifest_digest = "9D5CF953EA374FAC39448DEECFA8125784F5771E2B8C86DD09448FD9FEB23133"
+manifest_digest = "DCDF99E95F44503EDCD27F0815C87E0C10ED7DBEF540613469C244482E98D2CF"
 deps = { hikida = "hikida", miso = "miso", routed_stake = "routed_stake", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.testnet.generic_witness]
-source = { git = "https://github.com/misofm/vault.git", subdir = "test_packages/generic_witness", rev = "2c799916e45befaa471ccef1918e5b8c42aeddc4" }
+source = { git = "https://github.com/misofm/vault.git", subdir = "test_packages/generic_witness", rev = "18e9beb6057108ca97cafc24fed36ab3929bfb99" }
 use_environment = "testnet"
 manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332A87"
 deps = { std = "MoveStdlib", sui = "Sui" }
@@ -41,31 +41,31 @@ manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332
 deps = { std = "MoveStdlib", sui = "Sui" }
 
 [pinned.testnet.miso]
-source = { git = "https://github.com/misonetwork/protocol.git", subdir = ".", rev = "c23fe7fc4323f5ed8321be209a5efc08b6a1691a" }
+source = { git = "https://github.com/misonetwork/protocol.git", subdir = ".", rev = "7bda0bb740c32a75ef76c0739cb671b3de77d338" }
 use_environment = "testnet"
-manifest_digest = "0631488C45332A165F5F7810B9384A00412261B26C27FB427107AE56E5352E23"
+manifest_digest = "74A38A95D110CE1D6341D77397F2B998A094776B675062542A1A27751B047E3B"
 deps = { bps = "bps", miso_share = "miso_share", std = "MoveStdlib", sui = "Sui" }
 
 [pinned.testnet.miso_share]
-source = { git = "https://github.com/misonetwork/share.git", subdir = ".", rev = "d67ff8cd377db2809fc97455e82e87ff1794073e" }
+source = { git = "https://github.com/misonetwork/share.git", subdir = ".", rev = "561cfad98e4aaa63e6b34d5a6f4c22e397c70a52" }
 use_environment = "testnet"
 manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332A87"
 deps = { std = "MoveStdlib", sui = "Sui" }
 
 [pinned.testnet.routed_stake]
-source = { git = "https://github.com/misonetwork/routed-stake.git", subdir = ".", rev = "acd5741e55bacb6f9e287d86015f4302b9bac26c" }
+source = { git = "https://github.com/misonetwork/routed-stake.git", subdir = ".", rev = "e2cad64f2954a318f8e98a59d8caa1f71f319fe2" }
 use_environment = "testnet"
-manifest_digest = "4AAD6405ADD1DB6952D173417AA666FB43A5EBE487C9F76B81EC7CBDB6CCD1C5"
+manifest_digest = "E0EB79B57F894AEC8E8CB5EDFE46A594218565F019A90C1BA5D374B61C9AB790"
 deps = { royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui" }
 
 [pinned.testnet.royalty_pool]
-source = { git = "https://github.com/misonetwork/royalty-pool.git", subdir = ".", rev = "8470e492252b56da563a5b251e204ee090149724" }
+source = { git = "https://github.com/misonetwork/royalty-pool.git", subdir = ".", rev = "6a03c62182234b053e0b794de2a5be53a81bc584" }
 use_environment = "testnet"
 manifest_digest = "C42EB345D6ECD90E5E56F9D019D92139F40C0F80F0A5F6F6D4D28FDADB203CF2"
 deps = { hikida = "hikida", std = "MoveStdlib", sui = "Sui" }
 
 [pinned.testnet.vault]
-source = { git = "https://github.com/misofm/vault.git", subdir = ".", rev = "2c799916e45befaa471ccef1918e5b8c42aeddc4" }
+source = { git = "https://github.com/misofm/vault.git", subdir = ".", rev = "18e9beb6057108ca97cafc24fed36ab3929bfb99" }
 use_environment = "testnet"
 manifest_digest = "F75F9E8468B15EA1C22C97C7784FFD736933BEB8BC7308530C67D3FBF904BE39"
 deps = { generic_witness = "generic_witness", std = "MoveStdlib", sui = "Sui" }

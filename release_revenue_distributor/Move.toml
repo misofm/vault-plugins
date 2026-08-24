@@ -5,6 +5,6 @@ license = "Apache 2.0"
 authors = ["Miso Labs, Inc. (build@miso.network)"]
 
 [dependencies]
-miso = { git = "https://github.com/misonetwork/protocol.git", rev = "c23fe7fc4323f5ed8321be209a5efc08b6a1691a" }
-vault = { git = "https://github.com/misofm/vault.git", rev = "2c799916e45befaa471ccef1918e5b8c42aeddc4" }
+miso = { git = "https://github.com/misonetwork/protocol.git", rev = "7bda0bb740c32a75ef76c0739cb671b3de77d338" }
+vault = { git = "https://github.com/misofm/vault.git", rev = "18e9beb6057108ca97cafc24fed36ab3929bfb99" }
 hikida = { git = "https://github.com/unconfirmedlabs/hikida.git", rev = "e88c6fa88348bc2764823cf3666d7ca5e08b2f4f" }
