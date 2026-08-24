@@ -31,6 +31,9 @@ const ENothingToReceive: u64 = 0;
 /// The supplied VaultAdminCap belongs to another Vault.
 const ENotVaultAdmin: u64 = 1;
 
+/// No funds of the requested currency were settled for the Party.
+const ENoSettledFunds: u64 = 2;
+
 // === Events ===
 
 /// Emitted once per object taken out of a Party's transfer-to-object inbox.
@@ -158,6 +161,37 @@ public fun redeem_coin<Currency>(
     ctx: &mut TxContext,
 ) {
     assert_admin(vault, vault_admin_cap);
+    redeem_coin_impl<Currency>(vault, party, value, recipient, ctx)
+}
+
+/// Redeem the settled `Currency` amount reported for the Party address, create
+/// a Coin, and transfer it to `recipient`.
+///
+/// Funds sent during the current consensus commit are not yet settled and
+/// remain available for a later sweep. Aborts with `ENoSettledFunds` when the
+/// settled amount is zero. The framework caps the reported amount at
+/// `u64::MAX`; any excess remains for a later sweep.
+public fun sweep_coin<Currency>(
+    vault: &mut Vault<PartyAdminCap>,
+    party: &mut Party,
+    root: &AccumulatorRoot,
+    vault_admin_cap: &VaultAdminCap<PartyAdminCap>,
+    recipient: address,
+    ctx: &mut TxContext,
+) {
+    assert_admin(vault, vault_admin_cap);
+    let value = settled_funds<Currency>(root, party);
+    assert!(value > 0, ENoSettledFunds);
+    redeem_coin_impl<Currency>(vault, party, value, recipient, ctx)
+}
+
+fun redeem_coin_impl<Currency>(
+    vault: &mut Vault<PartyAdminCap>,
+    party: &mut Party,
+    value: u64,
+    recipient: address,
+    ctx: &mut TxContext,
+) {
     let party_id = object::id(party);
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     let coin = hikida::redeem_coin<Currency>(party.uid_mut(&cap), value, ctx);
@@ -265,6 +299,18 @@ public fun redeem_coin_for_testing<Currency>(
     ctx: &mut TxContext,
 ) {
     redeem_coin<Currency>(vault, party, vault_admin_cap, value, recipient, ctx)
+}
+
+#[test_only]
+public fun sweep_coin_for_testing<Currency>(
+    vault: &mut Vault<PartyAdminCap>,
+    party: &mut Party,
+    root: &AccumulatorRoot,
+    vault_admin_cap: &VaultAdminCap<PartyAdminCap>,
+    recipient: address,
+    ctx: &mut TxContext,
+) {
+    sweep_coin<Currency>(vault, party, root, vault_admin_cap, recipient, ctx)
 }
 
 #[test_only]

@@ -28,6 +28,11 @@ by an arbitrary caller to extract Party-owned value.
   objects, merges them, and transfers one Coin to the selected recipient.
 - `redeem_coin`: Admin-only and installation-gated. Redeems a selected amount
   from the Party's accumulator balance and transfers one Coin to the recipient.
+- `sweep_coin`: Admin-only and installation-gated. Reads the Party's funds
+  settled at the start of the current consensus commit, redeems that reported
+  amount, and transfers one Coin to the recipient. It aborts with
+  `ENoSettledFunds` when the snapshot is empty. The framework reports at most
+  `u64::MAX` per call, so any excess requires a later sweep.
 - `is_installed`, `inbox_address`, and `settled_funds`: Read-only views.
 
 All authority-bearing production endpoints are composable `public fun`s so
@@ -50,8 +55,9 @@ asset, or a privileged reference.
   balances through the Party UID.
 - Authority: every withdrawal requires the matching
   `VaultAdminCap<PartyAdminCap>` and an installed plugin authorization.
-- Funds and objects: the Vault administrator selects both the receiving tickets
-  or accumulator amount and the destination address.
+- Funds and objects: the Vault administrator selects receiving tickets, an
+  exact accumulator amount or a settled-balance sweep, and the destination
+  address.
 - Storage: no dynamic fields or other persistent Party state.
 - External packages: `miso_party`, `vault`, and `hikida` at the exact revisions
   pinned in `Move.toml`.
@@ -62,9 +68,13 @@ asset, or a privileged reference.
   selective and administrator-gated.
 - `settled_funds` is commit-settled and excludes funds credited earlier in the
   same transaction.
+- `sweep_coin` uses that same commit snapshot. Funds credited later in the
+  commit remain for another sweep, and competing sweeps can race on the same
+  snapshot; accumulator redemption prevents an overdraw.
 - The Move unit-test VM stubs funded accumulator accounting. The wiring and
-  authorization paths are unit-tested; funded reads and insufficient-balance
-  behavior must also be checked on-chain before production use.
+  authorization paths and empty-sweep behavior are unit-tested; a funded sweep
+  and insufficient-balance behavior must also be checked on-chain before
+  production use.
 - This package is a new Vault plugin deployment. The previously published direct
   `PartyAdminCap` package from `party-extensions` is not upgrade-compatible with
   this authority model and must not be reused as this plugin's published ID.

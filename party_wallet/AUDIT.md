@@ -11,12 +11,13 @@ audit. No unrestricted or permissionless withdrawal path is present.
 Every withdrawal performs the same sequence:
 
 1. Compare the supplied `VaultAdminCap<PartyAdminCap>` against the input Vault.
-2. Construct the package-only `party_wallet::witness::Witness`.
-3. Borrow `PartyAdminCap` through `Vault::borrow_as_plugin`.
-4. Call `Party::uid_mut`, which binds that capability to the exact Party.
-5. Receive or redeem the selected value.
-6. Return the exact capability through the Vault's hot-potato receipt.
-7. Emit the withdrawal event and transfer the asset to the administrator-selected
+2. For a sweep, read and validate the commit-settled accumulator amount.
+3. Construct the package-only `party_wallet::witness::Witness`.
+4. Borrow `PartyAdminCap` through `Vault::borrow_as_plugin`.
+5. Call `Party::uid_mut`, which binds that capability to the exact Party.
+6. Receive the selected object or redeem the selected/settled amount.
+7. Return the exact capability through the Vault's hot-potato receipt.
+8. Emit the withdrawal event and transfer the asset to the administrator-selected
    recipient.
 
 The plugin never returns `PartyAdminCap`, `sui::borrow::Borrow`, `Witness`, or
@@ -42,6 +43,9 @@ cannot use them as authority trampolines.
   types whose defining modules withheld `store`.
 - Funded accumulator reads and insufficient-balance enforcement depend on framework
   natives stubbed by the Move unit-test VM and require an on-chain integration check.
+  `sweep_coin` therefore has unit coverage for its empty snapshot and shares the
+  already-tested redemption, event, recipient, and authorization path with
+  `redeem_coin`, while a nonzero settled snapshot requires network coverage.
   **Disposition (2026-08-24):** accepted — unit-test VM limitation, not a code
   gap; the on-chain integration check is the required follow-up before
   production reliance.
@@ -50,5 +54,6 @@ cannot use them as authority trampolines.
 
 The suite covers installation and revocation, pre-install and post-revocation
 rejection, foreign Vault administration, a Vault bound to another Party, generic
-object receipt, batch receipt, coin merging, accumulator redemption, event payloads,
-empty batches, zero redemption, group Parties, and permissionless views.
+object receipt, batch receipt, coin merging, exact accumulator redemption,
+empty settled-balance sweeping, event payloads, empty batches, zero redemption,
+group Parties, and permissionless views.

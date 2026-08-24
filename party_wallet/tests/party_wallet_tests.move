@@ -22,6 +22,7 @@ const SYSTEM: address = @0x0;
 const EUnauthorized: u64 = 0;
 const ENoValueToRedeem: u64 = 1;
 const ENotVaultAdmin: u64 = 1;
+const ENoSettledFunds: u64 = 2;
 const EPluginAlreadyAuthorized: u64 = 1;
 const EPluginNotAuthorized: u64 = 2;
 
@@ -398,4 +399,26 @@ fun settled_funds_is_zero_for_an_unfunded_party() {
     ts::return_shared(root);
     ts::return_shared(party);
     scenario.end();
+}
+
+#[test, expected_failure(abort_code = ENoSettledFunds, location = plugin)]
+fun sweep_aborts_when_no_funds_are_settled() {
+    let mut scenario = ts::begin(SYSTEM);
+    sui::accumulator::create_for_testing(scenario.ctx());
+    new_vaulted_party(&mut scenario, false, true);
+
+    scenario.next_tx(ADMIN);
+    let mut party = scenario.take_shared<Party>();
+    let mut vault = scenario.take_shared<Vault<PartyAdminCap>>();
+    let root = scenario.take_shared<AccumulatorRoot>();
+    let vault_admin_cap = scenario.take_from_sender<VaultAdminCap<PartyAdminCap>>();
+    plugin::sweep_coin_for_testing<SUI>(
+        &mut vault,
+        &mut party,
+        &root,
+        &vault_admin_cap,
+        RECIPIENT,
+        scenario.ctx(),
+    );
+    abort
 }
