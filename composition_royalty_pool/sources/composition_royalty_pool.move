@@ -13,6 +13,7 @@ use composition_royalty_pool::witness::{Self, Witness};
 use hikida::hikida;
 use miso::composition::{Composition, CompositionAdminCap};
 use royalty_pool::pool::{Self, RoyaltyPool};
+use sui::accumulator::AccumulatorRoot;
 use sui::coin::Coin;
 use sui::transfer::Receiving;
 use vault::vault::{Self, Vault, VaultAdminCap};
@@ -21,6 +22,8 @@ use vault::vault::{Self, Vault, VaultAdminCap};
 
 /// The VaultAdminCap belongs to another Vault.
 const ENotVaultAdmin: u64 = 0;
+/// No Currency funds were settled at the Composition address for this commit.
+const ENoSettledFunds: u64 = 1;
 
 // === Installation ===
 
@@ -75,15 +78,24 @@ public fun receive_and_deposit<CompositionShare, Currency>(
     pool.deposit(balance);
 }
 
-/// Redeem funds accumulated at the Composition address and deposit them into
-/// its canonical pool. Anyone may crank this after installation.
-public fun redeem_and_deposit<CompositionShare, Currency>(
+/// Redeem the Currency funds settled at the Composition address at the start
+/// of this consensus commit and deposit the balance into its canonical pool.
+/// Each call sweeps at most `u64::MAX`; a larger settled balance requires
+/// repeated calls.
+/// Anyone may crank this after installation. Aborts with `ENoSettledFunds` if
+/// no positive balance is currently eligible to sweep.
+public fun sweep_and_deposit<CompositionShare, Currency>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     composition: &mut Composition<CompositionShare>,
     pool: &mut RoyaltyPool<CompositionShare, Currency>,
-    value: u64,
+    root: &AccumulatorRoot,
 ) {
     pool.assert_derived_from(object::id(composition));
+    let value = sui::balance::settled_funds_value<Currency>(
+        root,
+        object::id(composition).to_address(),
+    );
+    assert!(value > 0, ENoSettledFunds);
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     let balance = hikida::redeem_balance<Currency>(composition.uid_mut(&cap), value);
     vault.put_back(cap, receipt);
@@ -152,11 +164,11 @@ public fun receive_and_deposit_for_testing<CompositionShare, Currency>(
 }
 
 #[test_only]
-public fun redeem_and_deposit_for_testing<CompositionShare, Currency>(
+public fun sweep_and_deposit_for_testing<CompositionShare, Currency>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     composition: &mut Composition<CompositionShare>,
     pool: &mut RoyaltyPool<CompositionShare, Currency>,
-    value: u64,
+    root: &AccumulatorRoot,
 ) {
-    redeem_and_deposit(vault, composition, pool, value)
+    sweep_and_deposit(vault, composition, pool, root)
 }

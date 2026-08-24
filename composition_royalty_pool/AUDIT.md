@@ -1,7 +1,8 @@
 # Security Audit — `composition_royalty_pool`
 
-**Revision:** `77d6bdb8e680479b8d1d4ae250d07115d9323070` (repo HEAD) ·
-**Date:** 2026-08-22 · **Toolchain:** sui 1.77.2 ·
+**Revision:** working tree based on
+`77d6bdb8e680479b8d1d4ae250d07115d9323070` ·
+**Date:** 2026-08-24 · **Toolchain:** sui 1.77.2 ·
 **Framework:** pinned rev `06734f6ff0af45d8632a14a4dc4b100197f6b1a2`
 
 **Pinned dependencies** (by git rev, per `Move.toml`/`Move.lock`): `miso`
@@ -29,7 +30,7 @@ survives vault replacement.
 
 - **Capability gating.** `install`/`uninstall`/`initialize_pool` require the
   matching `VaultAdminCap`; `assert_admin` binds cap to vault by ID
-  (`composition_royalty_pool.move:110-115`) on top of the vault's own check
+  (`composition_royalty_pool.move:122-127`) on top of the vault's own check
   (`vault.move:265`). The plugin witness is package-only (`witness.move:10`);
   the vault checks authorization on every borrow (`vault.move:184-193`,
   aborts `EPluginNotAuthorized`).
@@ -37,18 +38,22 @@ survives vault replacement.
   where `Borrow` has no abilities — a hot potato forcing `put_back` in the
   same transaction (`vault.move:208-213`). Every endpoint borrows, uses the
   cap only for `composition.uid_mut(&cap)`, and puts it back **before**
-  calling external pool code (`:56-58`, `:72-74`, `:87-89`). No endpoint
-  returns the cap, receipt, witness, or a privileged reference.
+  calling external pool code. No endpoint returns the cap, receipt, witness,
+  or a privileged reference.
 - **Permissionless cranks cannot redirect value.** Both cranks open with
-  `pool.assert_derived_from(composition.id())` (`:71`, `:86`;
-  pool.move:381-388) on a pool argument typed `RoyaltyPool<CompositionShare,
+  `pool.assert_derived_from(composition.id())` (pool.move:381-388) on a pool
+  argument typed `RoyaltyPool<CompositionShare,
   Currency>`; the derived address encodes `(composition_id, Share,
   Currency)` (phantom-typed `RoyaltyPoolKey`, pool.move:152), so a
   foreign-parent or wrongly-typed pool aborts `EPoolNotDerivedFromParent`.
   The funds are equally pinned (hikida.move:14-31): `receive_balance`
   accepts only tickets for objects transferred to the Composition address,
-  `redeem_balance` withdraws from that object's own funds accumulator. A
-  crank chooses *which* coins and *how much* — never *where they go*.
+  `redeem_balance` withdraws from that object's own funds accumulator.
+  `sweep_and_deposit` derives the withdrawal amount from the `Currency` balance
+  settled at the Composition address at the beginning of the current consensus
+  commit. The framework clamps each read to `u64::MAX`, so larger balances are
+  swept over repeated calls. A crank chooses receiving tickets or triggers
+  that settled-balance sweep — never *where value goes*.
 - **Object binding is sound.** `composition::uid_mut` is type-scoped
   (composition.move:222), but exactly one `CompositionAdminCap` exists per
   share type: `composition::new` derives it via `claim` and consumes the
@@ -73,12 +78,13 @@ survives vault replacement.
 
 1. **Register a stake before funding.** Cranks abort `ENoStakedShares`
    until the first `register_stake`; funds at the Composition address are
-   safe but idle meanwhile. Zero-value folds also abort (`EInvalidValue` /
-   `ENoValueToRedeem`, hikida.move:56).
+   safe but idle meanwhile. An empty sweep aborts early with
+   `ENoSettledFunds`, before the plugin borrows the vaulted cap. Funds arriving
+   after the commit snapshot are intentionally left for the next sweep.
 2. **`uninstall` is immediate** — cranks and pool creation then abort
    `EPluginNotAuthorized`; funds already in the pool are unaffected.
 3. **Vault replacement needs re-install.** The pool address is stable
-   (`pool_address`, `:102-106`, pinned by test across a destroy/recreate
+   (`pool_address`, `:114-118`, pinned by test across a destroy/recreate
    cycle), but the replacement Vault starts with no authorized plugins.
 4. **The admin chooses `Currency` at pool creation.** One canonical pool per
    `(Composition, Currency)`; a pool for an unintended currency derives to
@@ -94,12 +100,16 @@ survives vault replacement.
 
 ## Verification
 
-- **8/8 tests passing** (`sui move test`): installation lifecycle and
+- **9/9 tests passing** (`sui move test`): installation lifecycle and
   non-idempotence (`EPluginAlreadyAuthorized`), init-before-install
-  (`EPluginNotAuthorized`), foreign-vault-admin (`ENotVaultAdmin`),
-  wrong-parent-pool (`EPoolNotDerivedFromParent`), pool-identity stability
-  across vault replacement, end-to-end receive/redeem folding with reward
-  claims, and a stranger-crank test proving the crank needs no capability.
+  (`EPluginNotAuthorized`), foreign-vault-admin (`ENotVaultAdmin`), pool-identity
+  stability across vault replacement, end-to-end receive folding with reward
+  claims, a stranger-crank test proving a crank needs no capability,
+  wrong-parent sweep rejection (`EPoolNotDerivedFromParent`), and an explicit
+  empty-sweep abort. The local Move harness does not
+  perform consensus settlement, so it cannot turn `send_funds` into a nonzero
+  `AccumulatorRoot` snapshot; successful nonzero sweeping requires a network
+  integration test.
   Fixtures are production-shaped — real `composition::new`, genuine
   fixed-supply currency, stake carved from the real share supply.
 - `sui move build --lint` warning-clean; test-only helpers confined to

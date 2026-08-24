@@ -10,6 +10,7 @@ use miso::composition::{Self, Composition, CompositionAdminCap};
 use royalty_pool::pool::{Self, RoyaltyPool};
 use royalty_pool::stake;
 use std::unit_test::{assert_eq, destroy};
+use sui::accumulator::AccumulatorRoot;
 use sui::balance;
 use sui::coin::{Self, Coin};
 use sui::coin_registry::Currency;
@@ -17,6 +18,7 @@ use sui::test_scenario;
 use vault::vault::{Self, Vault, VaultAdminCap};
 
 const ENotVaultAdmin: u64 = 0;
+const ENoSettledFunds: u64 = 1;
 const EPoolNotDerivedFromParent: u64 = 0;
 const EPluginAlreadyAuthorized: u64 = 1;
 const EPluginNotAuthorized: u64 = 2;
@@ -120,7 +122,7 @@ fun pool_parent_is_composition_and_survives_vault_replacement() {
 }
 
 #[test]
-fun composition_revenue_paths_are_forced_into_canonical_pool() {
+fun received_composition_revenue_is_forced_into_canonical_pool() {
     let mut scenario = test_scenario::begin(@0x0);
     let (mut composition, currency, mut vault, vault_admin_cap, mut shares) =
         fixture(scenario.ctx());
@@ -135,24 +137,6 @@ fun composition_revenue_paths_are_forced_into_canonical_pool() {
         &mut composition,
         &vault_admin_cap,
     );
-
-    scenario.next_tx(@0xA);
-    let mut pool: RoyaltyPool<Share, CURRENCY> =
-        scenario.take_shared_by_id(pool_id);
-    // The holder's stake is carved out of the real fixed share supply.
-    let mut holder = stake::new(shares.split(100), scenario.ctx());
-    pool.register_stake(&mut holder);
-    balance::create_for_testing<CURRENCY>(1_000).send_funds(composition_id.to_address());
-
-    plugin::redeem_and_deposit_for_testing(
-        &mut vault,
-        &mut composition,
-        &mut pool,
-        1_000,
-    );
-    let reward = pool.claim_rewards(&mut holder);
-    assert_eq!(reward.value(), 1_000);
-
     let paid_coin = coin::from_balance(
         balance::create_for_testing<CURRENCY>(500),
         scenario.ctx(),
@@ -161,6 +145,11 @@ fun composition_revenue_paths_are_forced_into_canonical_pool() {
     transfer::public_transfer(paid_coin, composition_id.to_address());
 
     scenario.next_tx(@0xA);
+    let mut pool: RoyaltyPool<Share, CURRENCY> =
+        scenario.take_shared_by_id(pool_id);
+    // The holder's stake is carved out of the real fixed share supply.
+    let mut holder = stake::new(shares.split(100), scenario.ctx());
+    pool.register_stake(&mut holder);
     let receiving = test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(paid_coin_id);
     plugin::receive_and_deposit_for_testing(
         &mut vault,
@@ -174,7 +163,6 @@ fun composition_revenue_paths_are_forced_into_canonical_pool() {
     pool.unregister_stake(&mut holder);
     test_scenario::return_shared(pool);
     balance::destroy_for_testing(stake::destroy(holder));
-    balance::destroy_for_testing(reward);
     balance::destroy_for_testing(received_reward);
     plugin::uninstall_for_testing(&mut vault, &vault_admin_cap);
     destroy_fixture(composition, currency, vault, vault_admin_cap, shares);
@@ -205,20 +193,27 @@ fun foreign_vault_admin_cannot_initialize_pool() {
 /// the plugin only deposits into the pool derived from the composition itself.
 #[test, expected_failure(abort_code = EPoolNotDerivedFromParent, location = pool)]
 fun composition_revenue_cannot_enter_a_wrong_parent_pool() {
-    let ctx = &mut tx_context::dummy();
-    let (mut composition, _currency, mut vault, vault_admin_cap, _shares) = fixture(ctx);
+    let mut scenario = test_scenario::begin(@0x0);
+    sui::accumulator::create_for_testing(scenario.ctx());
+    let (mut composition, _currency, mut vault, vault_admin_cap, _shares) =
+        fixture(scenario.ctx());
     plugin::install_for_testing(&mut vault, &vault_admin_cap);
 
     // A same-typed pool derived from a foreign parent object.
-    let (mut foreign, foreign_cap) =
-        composition::new_for_testing<FOREIGN_COMPOSITION_SHARE>("Foreign", 1_000, ctx);
+    let (mut foreign, foreign_cap) = composition::new_for_testing<FOREIGN_COMPOSITION_SHARE>(
+        "Foreign",
+        1_000,
+        scenario.ctx(),
+    );
     let mut wrong_pool = pool::new<Share, CURRENCY>(foreign.uid_mut(&foreign_cap));
 
-    plugin::redeem_and_deposit_for_testing(
+    scenario.next_tx(STRANGER);
+    let root = scenario.take_shared<AccumulatorRoot>();
+    plugin::sweep_and_deposit_for_testing(
         &mut vault,
         &mut composition,
         &mut wrong_pool,
-        1,
+        &root,
     );
     abort
 }
@@ -248,14 +243,25 @@ fun strangers_can_crank_revenue_into_the_pool() {
         &mut composition,
         &vault_admin_cap,
     );
-    balance::create_for_testing<CURRENCY>(1_000).send_funds(composition_id.to_address());
+    let paid_coin = coin::from_balance(
+        balance::create_for_testing<CURRENCY>(1_000),
+        scenario.ctx(),
+    );
+    let paid_coin_id = object::id(&paid_coin);
+    transfer::public_transfer(paid_coin, composition_id.to_address());
 
     // The crank transaction is sent by an address holding no capability.
     scenario.next_tx(STRANGER);
     let mut pool: RoyaltyPool<Share, CURRENCY> = scenario.take_shared_by_id(pool_id);
     let mut holder = stake::new(shares.split(100), scenario.ctx());
     pool.register_stake(&mut holder);
-    plugin::redeem_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 1_000);
+    let receiving = test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(paid_coin_id);
+    plugin::receive_and_deposit_for_testing(
+        &mut vault,
+        &mut composition,
+        &mut pool,
+        vector[receiving],
+    );
     let reward = pool.claim_rewards(&mut holder);
     assert_eq!(reward.value(), 1_000);
 
@@ -266,4 +272,33 @@ fun strangers_can_crank_revenue_into_the_pool() {
     plugin::uninstall_for_testing(&mut vault, &vault_admin_cap);
     destroy_fixture(composition, currency, vault, vault_admin_cap, shares);
     scenario.end();
+}
+
+#[test, expected_failure(abort_code = ENoSettledFunds, location = plugin)]
+fun sweep_aborts_when_no_funds_are_settled() {
+    let mut scenario = test_scenario::begin(@0x0);
+    sui::accumulator::create_for_testing(scenario.ctx());
+    let (mut composition, _currency, mut vault, vault_admin_cap, _shares) =
+        fixture(scenario.ctx());
+    let pool_id = object::id_from_address(
+        plugin::pool_address<Share, CURRENCY>(&composition),
+    );
+
+    plugin::install_for_testing(&mut vault, &vault_admin_cap);
+    plugin::initialize_pool_for_testing<Share, CURRENCY>(
+        &mut vault,
+        &mut composition,
+        &vault_admin_cap,
+    );
+
+    scenario.next_tx(STRANGER);
+    let mut pool: RoyaltyPool<Share, CURRENCY> = scenario.take_shared_by_id(pool_id);
+    let root = scenario.take_shared<AccumulatorRoot>();
+    plugin::sweep_and_deposit_for_testing(
+        &mut vault,
+        &mut composition,
+        &mut pool,
+        &root,
+    );
+    abort
 }

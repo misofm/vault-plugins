@@ -26,9 +26,12 @@ to a different address and cannot squat the canonical one.
 - `receive_and_deposit`: Permissionless after installation. Receives selected
   `Coin<Currency>` objects sent to the Composition and deposits their combined
   balance into the canonical pool.
-- `redeem_and_deposit`: Permissionless after installation. Redeems a selected
-  amount from the Composition's funds accumulator and deposits it into the
-  canonical pool.
+- `sweep_and_deposit`: Permissionless after installation. Reads the `Currency`
+  balance settled at the Composition address at the start of the current
+  consensus commit and deposits up to `u64::MAX` per call into the canonical
+  pool. It aborts with `ENoSettledFunds` when no positive amount is eligible;
+  a larger balance requires repeated calls, and funds sent later in the same
+  commit remain for a subsequent sweep.
 - `is_installed` and `pool_address`: Read-only, composable views.
 
 All privileged production endpoints are composable `public fun`s so callers can
@@ -44,15 +47,21 @@ None returns the leased cap, Vault receipt, witness, or a privileged reference.
 - Funds: can move funds held at the Composition address only into the
   `RoyaltyPool` derived from that same Composition and matching type arguments.
 - Initialization: requires the matching `VaultAdminCap`.
-- Folding: permissionless after installation; callers choose tickets or amount,
-  but cannot choose a different destination pool.
+- Folding: permissionless after installation; callers choose receiving tickets
+  or sweep the settled accumulator balance, but cannot choose a different
+  destination pool.
 - External packages: `miso`, `vault`, `royalty_pool`, and `hikida` at the exact
   revisions pinned in `Move.toml`.
 
 ## Build and test
 
 The package includes `sui::test_scenario` flows covering canonical shared-pool
-creation and cross-transaction receive/redeem deposits.
+creation, cross-transaction receives, sweep destination validation, and the
+explicit empty-sweep abort. The local Move harness does not execute consensus
+settlement, so it cannot materialize a nonzero `AccumulatorRoot` snapshot from
+`send_funds`; nonzero sweep behavior relies on the pinned framework's
+`settled_funds_value` and withdrawal primitives and must be exercised in a
+network integration test.
 
 ```sh
 sui move build

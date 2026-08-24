@@ -13,6 +13,7 @@ use hikida::hikida;
 use miso::recording::{Recording, RecordingAdminCap};
 use recording_royalty_pool::witness::{Self, Witness};
 use royalty_pool::pool::{Self, RoyaltyPool};
+use sui::accumulator::AccumulatorRoot;
 use sui::coin::Coin;
 use sui::transfer::Receiving;
 use vault::vault::{Self, Vault, VaultAdminCap};
@@ -21,6 +22,9 @@ use vault::vault::{Self, Vault, VaultAdminCap};
 
 /// The VaultAdminCap belongs to another Vault.
 const ENotVaultAdmin: u64 = 0;
+
+/// No funds of the requested currency were settled for the Recording.
+const ENoSettledFunds: u64 = 1;
 
 // === Installation ===
 
@@ -75,15 +79,26 @@ public fun receive_and_deposit<RecordingShare, CompositionShare, Currency>(
     pool.deposit(balance);
 }
 
-/// Redeem funds accumulated at the Recording address and deposit them into
-/// its canonical pool. Anyone may crank this after installation.
-public fun redeem_and_deposit<RecordingShare, CompositionShare, Currency>(
+/// Redeem the settled `Currency` amount reported for the Recording address
+/// and deposit it into the canonical pool. Anyone may crank this after
+/// installation.
+///
+/// Funds sent during the current consensus commit are not yet settled and
+/// remain available for a later sweep. Aborts with `ENoSettledFunds` when the
+/// settled amount is zero. The framework caps the reported amount at
+/// `u64::MAX`; any excess remains for a later sweep.
+public fun sweep_and_deposit<RecordingShare, CompositionShare, Currency>(
     vault: &mut Vault<RecordingAdminCap<RecordingShare>>,
     recording: &mut Recording<RecordingShare, CompositionShare>,
     pool: &mut RoyaltyPool<RecordingShare, Currency>,
-    value: u64,
+    root: &AccumulatorRoot,
 ) {
     pool.assert_derived_from(object::id(recording));
+    let value = sui::balance::settled_funds_value<Currency>(
+        root,
+        object::id(recording).to_address(),
+    );
+    assert!(value > 0, ENoSettledFunds);
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     let balance = hikida::redeem_balance<Currency>(recording.uid_mut(&cap), value);
     vault.put_back(cap, receipt);
@@ -156,11 +171,11 @@ public fun receive_and_deposit_for_testing<RecordingShare, CompositionShare, Cur
 }
 
 #[test_only]
-public fun redeem_and_deposit_for_testing<RecordingShare, CompositionShare, Currency>(
+public fun sweep_and_deposit_for_testing<RecordingShare, CompositionShare, Currency>(
     vault: &mut Vault<RecordingAdminCap<RecordingShare>>,
     recording: &mut Recording<RecordingShare, CompositionShare>,
     pool: &mut RoyaltyPool<RecordingShare, Currency>,
-    value: u64,
+    root: &AccumulatorRoot,
 ) {
-    redeem_and_deposit(vault, recording, pool, value)
+    sweep_and_deposit(vault, recording, pool, root)
 }

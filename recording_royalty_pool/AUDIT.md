@@ -31,23 +31,24 @@ vault replacement. Same shape and trust surface as `composition_royalty_pool`.
   package-only `Witness` (`witness.move:7,10`) and goes through
   `vault.borrow_as_plugin`, which aborts unless the witness was authorized
   (`vault.move:184-193`). `install`/`uninstall` require the matching
-  `VaultAdminCap` (`recording_royalty_pool.move:28-41`); `initialize_pool`
+  `VaultAdminCap` (`recording_royalty_pool.move:32-45`); `initialize_pool`
   additionally self-asserts cap↔vault identity
-  (`recording_royalty_pool.move:55,110-115`) — defense in depth, since
+  (`recording_royalty_pool.move:59,125-130`) — defense in depth, since
   exactly one `RecordingAdminCap<RecordingShare>` can exist on-chain (below).
 - **Hot-potato lease.** The borrowed cap pairs with an ability-less `Borrow`
   receipt; the transaction cannot finish without `put_back` returning the
   exact cap to the exact vault (`vault.move:208-214`). The plugin returns it
   *before* calling external pool logic
-  (`recording_royalty_pool.move:56-59,72-75,87-90`), so no external code ever
+  (`recording_royalty_pool.move:60-63,76-79,102-105`), so no external code ever
   sees the cap. No endpoint returns cap, receipt, witness, or a privileged
   reference.
-- **Funds cannot be redirected.** Both permissionless cranks open with
+- **Funds cannot be redirected.** All permissionless cranks open with
   `pool.assert_derived_from(recording.id())`
-  (`recording_royalty_pool.move:71,86`), recomputing the derived address from
+  (`recording_royalty_pool.move:75,96`), recomputing the derived address from
   `(recording_id, RecordingShare, Currency)` (`pool.move:381-389`). The
-  caller chooses *when* to fold and *which tickets/amount*, never the
-  destination; a wrong-parent pool of the same type aborts
+  caller chooses *when* to fold and *which tickets*, or sweeps the amount
+  reported by `AccumulatorRoot`; the caller never chooses an accumulator
+  amount or the destination; a wrong-parent pool of the same type aborts
   `EPoolNotDerivedFromParent` (tested). The hikida pulls
   (`hikida.move:14-19,29-31`) draw only from the UID the plugin lends — the
   recording's — via framework `public_receive`/`withdraw_funds_from_object`.
@@ -77,11 +78,18 @@ vault replacement. Same shape and trust surface as `composition_royalty_pool`.
    address meanwhile. Funds sent to the pool's derived address before it
    exists are also safe — a later `pool::new` claims exactly that ID and the
    pool's own `receive_and_deposit` recovers them (`pool.move:205-222`).
+   `sweep_and_deposit` additionally aborts with `ENoSettledFunds` when the
+   commit-start snapshot is zero; funds sent during that commit become
+   sweepable in a later commit. The framework caps its snapshot result at
+   `u64::MAX`, so any excess requires a later sweep. Concurrent cranks can read
+   the same snapshot; after one drains it, another may abort during withdrawal.
+   A sweep can also abort if adding its balance would overflow the pool's `u64`
+   balance; outstanding rewards must be claimed to free capacity before retrying.
 2. **Cap scope is permanent root.** `recording.uid_mut` is root over *all*
    dynamic fields on the recording — including other extensions' fields — in
    any lifecycle state (`recording.move:307-318`). Authorizing any plugin on
    this vault means trusting it with that whole surface; this plugin uses it
-   only to claim the pool ID and receive/redeem funds.
+   only to claim the pool ID and receive/sweep funds.
 3. **Uninstall is immediate**, needs no plugin cooperation
    (`vault.move:167-176`); cross-transaction in-flight borrows are impossible
    (hot potato).
@@ -93,21 +101,24 @@ vault replacement. Same shape and trust surface as `composition_royalty_pool`.
    unrelated object (`pool::new` is public; cap-gating is the parent's). It
    claims a different, unpaid address and this plugin never deposits into it
    — clients should derive pool addresses via `pool_address`
-   (`recording_royalty_pool.move:102-106`), not by search. Claim dust is
+   (`recording_royalty_pool.move:116-121`), not by search. Claim dust is
    compensated by consumed-index advance (`pool.move:306-311`);
    sub-base-unit exit residue is forfeited by design (`pool.move:250-255`).
 
 ## Verification
 
-- **8/8 tests passing** (`sui move test`, sui 1.77.2). Coverage: install /
+- **9/9 tests passing** (`sui move test`, sui 1.77.2). Coverage: install /
   uninstall lifecycle and double-install abort (`EPluginAlreadyAuthorized`);
   pre-installation pool-init abort (`EPluginNotAuthorized`); pool parented to
   the recording with address stable across vault destruction/replacement;
-  receive- and redeem-path deposits claimable pro-rata from a real
-  fixed-supply share stake; foreign `VaultAdminCap` rejected
-  (`ENotVaultAdmin`); wrong-parent pool rejected
-  (`EPoolNotDerivedFromParent`); and a capability-less `STRANGER`
-  successfully cranking revenue — the intended permissionless path.
+  received-coin deposits claimable pro-rata from a real fixed-supply share
+  stake; foreign `VaultAdminCap` rejected (`ENotVaultAdmin`); a wrong-parent
+  pool rejected on the sweep surface (`EPoolNotDerivedFromParent`); a
+  capability-less `STRANGER` successfully cranking Recording-addressed coins;
+  and an explicit empty-sweep abort (`ENoSettledFunds`). The local Move test
+  harness does not populate `AccumulatorRoot` snapshots from native accumulator
+  writes, so the nonzero snapshot-to-redemption bridge is build/type-checked
+  but cannot be exercised with a synthetic root balance.
 - Fixtures are production-shaped (commit `f23f557`): recordings issued
   through the real `recording::new` flow with a genuine registry currency
   (`tests/share.move`), so the composition cut and supply gates execute for

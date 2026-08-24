@@ -26,9 +26,13 @@ to a different address and cannot squat the canonical one.
 - `receive_and_deposit`: Permissionless after installation. Receives selected
   `Coin<Currency>` objects sent to the Recording and deposits their combined
   balance into the canonical pool.
-- `redeem_and_deposit`: Permissionless after installation. Redeems a selected
-  amount from the Recording's funds accumulator and deposits it into the
-  canonical pool.
+- `sweep_and_deposit`: Permissionless after installation. Reads the Recording's
+  funds settled at the start of the current consensus commit from the shared
+  `AccumulatorRoot`, redeems that entire reported amount, and deposits it into the
+  canonical pool. It aborts when no funds of that currency are settled; funds
+  sent during the current commit remain for a later sweep. The framework caps
+  the reported value at `u64::MAX`, so a larger balance requires subsequent
+  sweeps.
 - `is_installed` and `pool_address`: Read-only, composable views.
 
 All privileged production endpoints are composable `public fun`s so callers can
@@ -44,15 +48,20 @@ None returns the leased cap, Vault receipt, witness, or a privileged reference.
 - Funds: can move funds held at the Recording address only into the
   `RoyaltyPool` derived from that same Recording and matching type arguments.
 - Initialization: requires the matching `VaultAdminCap`.
-- Folding: permissionless after installation; callers choose tickets or amount,
-  but cannot choose a different destination pool.
+- Folding: permissionless after installation; callers choose coin tickets or
+  sweep the full settled balance, but cannot choose a different destination
+  pool or accumulator amount.
 - External packages: `miso`, `vault`, `royalty_pool`, and `hikida` at the exact
   revisions pinned in `Move.toml`.
 
 ## Build and test
 
 The package includes `sui::test_scenario` flows covering canonical shared-pool
-creation and cross-transaction receive/redeem deposits.
+creation, cross-transaction receives, canonical-pool enforcement for sweeps,
+and explicit empty-sweep behavior. The local Move test harness does not
+populate `AccumulatorRoot` snapshots from native accumulator writes, so a
+nonzero sweep is covered by build/type checks rather than a synthetic balance
+snapshot.
 
 ```sh
 sui move build
