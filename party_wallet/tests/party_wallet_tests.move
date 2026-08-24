@@ -100,7 +100,7 @@ fun plugin_cannot_be_installed_twice() {
 }
 
 #[test]
-fun receives_and_merges_coins_for_an_explicit_recipient() {
+fun receives_and_merges_coins_into_a_balance() {
     let mut scenario = ts::begin(ADMIN);
     let party_id = new_vaulted_party(&mut scenario, false, true);
 
@@ -113,14 +113,13 @@ fun receives_and_merges_coins_for_an_explicit_recipient() {
         let mut party = scenario.take_shared<Party>();
         let mut vault = scenario.take_shared<Vault<PartyAdminCap>>();
         let vault_admin_cap = scenario.take_from_sender<VaultAdminCap<PartyAdminCap>>();
-        plugin::receive_coins_for_testing<SUI>(
+        let received = plugin::receive_coins_for_testing<SUI>(
             &mut vault,
             &mut party,
             &vault_admin_cap,
             vector[ticket<Coin<SUI>>(first), ticket<Coin<SUI>>(second)],
-            RECIPIENT,
-            scenario.ctx(),
         );
+        assert_eq!(received.value(), 1_000);
 
         let events = event::events_by_type<plugin::CoinsReceivedEvent<SUI>>();
         assert_eq!(events.length(), 1);
@@ -128,16 +127,13 @@ fun receives_and_merges_coins_for_an_explicit_recipient() {
         assert_eq!(emitted_party, party_id);
         assert_eq!(amount, 1_000);
         assert_eq!(count, 2);
+        balance::destroy_for_testing(received);
 
         ts::return_shared(vault);
         ts::return_shared(party);
         scenario.return_to_sender(vault_admin_cap);
     };
 
-    scenario.next_tx(RECIPIENT);
-    let coin = scenario.take_from_sender<Coin<SUI>>();
-    assert_eq!(coin.value(), 1_000);
-    coin.burn_for_testing();
     scenario.end();
 }
 
@@ -221,7 +217,7 @@ fun receives_multiple_objects() {
 }
 
 #[test]
-fun redeems_accumulator_funds_to_a_coin_for_the_recipient() {
+fun redeems_accumulator_funds_to_a_balance() {
     let mut scenario = ts::begin(ADMIN);
     let party_id = new_vaulted_party(&mut scenario, false, true);
 
@@ -233,30 +229,26 @@ fun redeems_accumulator_funds_to_a_coin_for_the_recipient() {
         let mut party = scenario.take_shared<Party>();
         let mut vault = scenario.take_shared<Vault<PartyAdminCap>>();
         let vault_admin_cap = scenario.take_from_sender<VaultAdminCap<PartyAdminCap>>();
-        plugin::redeem_coin_for_testing<SUI>(
+        let redeemed = plugin::redeem_balance_for_testing<SUI>(
             &mut vault,
             &mut party,
             &vault_admin_cap,
             750,
-            RECIPIENT,
-            scenario.ctx(),
         );
+        assert_eq!(redeemed.value(), 750);
 
         let events = event::events_by_type<plugin::FundsRedeemedEvent<SUI>>();
         assert_eq!(events.length(), 1);
         let (emitted_party, amount) = plugin::funds_redeemed_event_fields(&events[0]);
         assert_eq!(emitted_party, party_id);
         assert_eq!(amount, 750);
+        balance::destroy_for_testing(redeemed);
 
         ts::return_shared(vault);
         ts::return_shared(party);
         scenario.return_to_sender(vault_admin_cap);
     };
 
-    scenario.next_tx(RECIPIENT);
-    let coin = scenario.take_from_sender<Coin<SUI>>();
-    assert_eq!(coin.value(), 750);
-    coin.burn_for_testing();
     scenario.end();
 }
 
@@ -264,14 +256,12 @@ fun redeems_accumulator_funds_to_a_coin_for_the_recipient() {
 fun withdrawal_is_disabled_before_installation() {
     let ctx = &mut tx_context::dummy();
     let (mut party, mut vault, vault_admin_cap) = local_fixture(ctx);
-    plugin::redeem_coin_for_testing<SUI>(
+    balance::destroy_for_testing(plugin::redeem_balance_for_testing<SUI>(
         &mut vault,
         &mut party,
         &vault_admin_cap,
         1,
-        RECIPIENT,
-        ctx,
-    );
+    ));
     abort
 }
 
@@ -281,14 +271,12 @@ fun withdrawal_is_disabled_after_revocation() {
     let (mut party, mut vault, vault_admin_cap) = local_fixture(ctx);
     plugin::install_for_testing(&mut vault, &vault_admin_cap);
     plugin::uninstall_for_testing(&mut vault, &vault_admin_cap);
-    plugin::redeem_coin_for_testing<SUI>(
+    balance::destroy_for_testing(plugin::redeem_balance_for_testing<SUI>(
         &mut vault,
         &mut party,
         &vault_admin_cap,
         1,
-        RECIPIENT,
-        ctx,
-    );
+    ));
     abort
 }
 
@@ -298,14 +286,12 @@ fun withdrawal_rejects_another_vaults_admin_cap() {
     let (mut party, mut vault, vault_admin_cap) = local_fixture(ctx);
     plugin::install_for_testing(&mut vault, &vault_admin_cap);
     let (_other_party, _other_vault, other_vault_admin_cap) = local_fixture(ctx);
-    plugin::redeem_coin_for_testing<SUI>(
+    balance::destroy_for_testing(plugin::redeem_balance_for_testing<SUI>(
         &mut vault,
         &mut party,
         &other_vault_admin_cap,
         1,
-        RECIPIENT,
-        ctx,
-    );
+    ));
     abort
 }
 
@@ -315,14 +301,12 @@ fun withdrawal_rejects_a_vault_for_another_party() {
     let (mut party, _party_admin_cap) = new_party(false, ctx);
     let (_other_party, mut vault, vault_admin_cap) = local_fixture(ctx);
     plugin::install_for_testing(&mut vault, &vault_admin_cap);
-    plugin::redeem_coin_for_testing<SUI>(
+    balance::destroy_for_testing(plugin::redeem_balance_for_testing<SUI>(
         &mut vault,
         &mut party,
         &vault_admin_cap,
         1,
-        RECIPIENT,
-        ctx,
-    );
+    ));
     abort
 }
 
@@ -346,14 +330,12 @@ fun receive_coins_rejects_an_empty_batch() {
     let ctx = &mut tx_context::dummy();
     let (mut party, mut vault, vault_admin_cap) = local_fixture(ctx);
     plugin::install_for_testing(&mut vault, &vault_admin_cap);
-    plugin::receive_coins_for_testing<SUI>(
+    balance::destroy_for_testing(plugin::receive_coins_for_testing<SUI>(
         &mut vault,
         &mut party,
         &vault_admin_cap,
         vector[],
-        RECIPIENT,
-        ctx,
-    );
+    ));
     abort
 }
 
@@ -362,14 +344,12 @@ fun redeem_zero_aborts_in_hikida() {
     let ctx = &mut tx_context::dummy();
     let (mut party, mut vault, vault_admin_cap) = local_fixture(ctx);
     plugin::install_for_testing(&mut vault, &vault_admin_cap);
-    plugin::redeem_coin_for_testing<SUI>(
+    balance::destroy_for_testing(plugin::redeem_balance_for_testing<SUI>(
         &mut vault,
         &mut party,
         &vault_admin_cap,
         0,
-        RECIPIENT,
-        ctx,
-    );
+    ));
     abort
 }
 
@@ -412,13 +392,11 @@ fun sweep_aborts_when_no_funds_are_settled() {
     let mut vault = scenario.take_shared<Vault<PartyAdminCap>>();
     let root = scenario.take_shared<AccumulatorRoot>();
     let vault_admin_cap = scenario.take_from_sender<VaultAdminCap<PartyAdminCap>>();
-    plugin::sweep_coin_for_testing<SUI>(
+    balance::destroy_for_testing(plugin::sweep_balance_for_testing<SUI>(
         &mut vault,
         &mut party,
         &root,
         &vault_admin_cap,
-        RECIPIENT,
-        scenario.ctx(),
-    );
+    ));
     abort
 }

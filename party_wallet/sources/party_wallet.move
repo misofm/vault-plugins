@@ -5,8 +5,9 @@
 ///
 /// Anyone may address objects or funds to a Party ID. This plugin is the bounded
 /// withdrawal door: it temporarily leases the matching `PartyAdminCap`, uses it
-/// only to reach that Party's UID, returns it to the Vault, and then transfers the
-/// withdrawn object or coin to the recipient selected by the Vault administrator.
+/// only to reach that Party's UID, and returns it to the Vault. Object withdrawals
+/// transfer to the recipient selected by the Vault administrator; monetary
+/// withdrawals return a composable `Balance` for the caller's PTB to consume.
 ///
 /// Installation alone never makes withdrawals permissionless. Every production
 /// withdrawal is a `public fun` requiring the matching `VaultAdminCap`, and no
@@ -18,6 +19,7 @@ use hikida::hikida;
 use miso_party::party::{Party, PartyAdminCap};
 use party_wallet::witness::{Self, Witness};
 use sui::accumulator::AccumulatorRoot;
+use sui::balance::Balance;
 use sui::coin::Coin;
 use sui::event::emit;
 use sui::transfer::Receiving;
@@ -119,8 +121,8 @@ public fun receive_objects<T: key + store>(
     received.destroy!(|object| transfer::public_transfer(object, recipient))
 }
 
-/// Receive coin objects of one currency, merge them, and transfer the resulting
-/// Coin to `recipient`.
+/// Receive coin objects of one currency, merge them, and return their combined
+/// Balance for the caller's PTB to consume.
 ///
 /// Aborts with `ENothingToReceive` if `coins` is empty. It also aborts if the
 /// Vault administrator, plugin installation, Party capability, or a receiving
@@ -130,74 +132,66 @@ public fun receive_coins<Currency>(
     party: &mut Party,
     vault_admin_cap: &VaultAdminCap<PartyAdminCap>,
     coins: vector<Receiving<Coin<Currency>>>,
-    recipient: address,
-    ctx: &mut TxContext,
-) {
+): Balance<Currency> {
     assert_admin(vault, vault_admin_cap);
     assert!(!coins.is_empty(), ENothingToReceive);
     let party_id = object::id(party);
     let count = coins.length();
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
-    let coin = hikida::receive_coin(party.uid_mut(&cap), coins, ctx);
+    let balance = hikida::receive_balance(party.uid_mut(&cap), coins);
     vault.put_back(cap, receipt);
-    emit(CoinsReceivedEvent<Currency> { party_id, amount: coin.value(), coins: count });
-    transfer::public_transfer(coin, recipient)
+    emit(CoinsReceivedEvent<Currency> { party_id, amount: balance.value(), coins: count });
+    balance
 }
 
 // === Accumulator withdrawals ===
 
-/// Redeem `value` from the Party's accumulator balance, create a Coin, and
-/// transfer it to `recipient`.
+/// Redeem `value` from the Party's accumulator and return a Balance for the
+/// caller's PTB to consume.
 ///
 /// Aborts if the Vault administrator is wrong, the plugin is not installed, the
 /// Vault contains another Party's cap, `value` is zero, or the accumulator cannot
 /// cover the requested amount.
-public fun redeem_coin<Currency>(
+public fun redeem_balance<Currency>(
     vault: &mut Vault<PartyAdminCap>,
     party: &mut Party,
     vault_admin_cap: &VaultAdminCap<PartyAdminCap>,
     value: u64,
-    recipient: address,
-    ctx: &mut TxContext,
-) {
+): Balance<Currency> {
     assert_admin(vault, vault_admin_cap);
-    redeem_coin_impl<Currency>(vault, party, value, recipient, ctx)
+    redeem_balance_impl<Currency>(vault, party, value)
 }
 
-/// Redeem the settled `Currency` amount reported for the Party address, create
-/// a Coin, and transfer it to `recipient`.
+/// Redeem the settled `Currency` amount reported for the Party address and
+/// return a Balance for the caller's PTB to consume.
 ///
 /// Funds sent during the current consensus commit are not yet settled and
 /// remain available for a later sweep. Aborts with `ENoSettledFunds` when the
 /// settled amount is zero. The framework caps the reported amount at
 /// `u64::MAX`; any excess remains for a later sweep.
-public fun sweep_coin<Currency>(
+public fun sweep_balance<Currency>(
     vault: &mut Vault<PartyAdminCap>,
     party: &mut Party,
     root: &AccumulatorRoot,
     vault_admin_cap: &VaultAdminCap<PartyAdminCap>,
-    recipient: address,
-    ctx: &mut TxContext,
-) {
+): Balance<Currency> {
     assert_admin(vault, vault_admin_cap);
     let value = settled_funds<Currency>(root, party);
     assert!(value > 0, ENoSettledFunds);
-    redeem_coin_impl<Currency>(vault, party, value, recipient, ctx)
+    redeem_balance_impl<Currency>(vault, party, value)
 }
 
-fun redeem_coin_impl<Currency>(
+fun redeem_balance_impl<Currency>(
     vault: &mut Vault<PartyAdminCap>,
     party: &mut Party,
     value: u64,
-    recipient: address,
-    ctx: &mut TxContext,
-) {
+): Balance<Currency> {
     let party_id = object::id(party);
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
-    let coin = hikida::redeem_coin<Currency>(party.uid_mut(&cap), value, ctx);
+    let balance = hikida::redeem_balance<Currency>(party.uid_mut(&cap), value);
     vault.put_back(cap, receipt);
-    emit(FundsRedeemedEvent<Currency> { party_id, amount: coin.value() });
-    transfer::public_transfer(coin, recipient)
+    emit(FundsRedeemedEvent<Currency> { party_id, amount: balance.value() });
+    balance
 }
 
 // === Views ===
@@ -283,34 +277,28 @@ public fun receive_coins_for_testing<Currency>(
     party: &mut Party,
     vault_admin_cap: &VaultAdminCap<PartyAdminCap>,
     coins: vector<Receiving<Coin<Currency>>>,
-    recipient: address,
-    ctx: &mut TxContext,
-) {
-    receive_coins(vault, party, vault_admin_cap, coins, recipient, ctx)
+): Balance<Currency> {
+    receive_coins(vault, party, vault_admin_cap, coins)
 }
 
 #[test_only]
-public fun redeem_coin_for_testing<Currency>(
+public fun redeem_balance_for_testing<Currency>(
     vault: &mut Vault<PartyAdminCap>,
     party: &mut Party,
     vault_admin_cap: &VaultAdminCap<PartyAdminCap>,
     value: u64,
-    recipient: address,
-    ctx: &mut TxContext,
-) {
-    redeem_coin<Currency>(vault, party, vault_admin_cap, value, recipient, ctx)
+): Balance<Currency> {
+    redeem_balance<Currency>(vault, party, vault_admin_cap, value)
 }
 
 #[test_only]
-public fun sweep_coin_for_testing<Currency>(
+public fun sweep_balance_for_testing<Currency>(
     vault: &mut Vault<PartyAdminCap>,
     party: &mut Party,
     root: &AccumulatorRoot,
     vault_admin_cap: &VaultAdminCap<PartyAdminCap>,
-    recipient: address,
-    ctx: &mut TxContext,
-) {
-    sweep_coin<Currency>(vault, party, root, vault_admin_cap, recipient, ctx)
+): Balance<Currency> {
+    sweep_balance<Currency>(vault, party, root, vault_admin_cap)
 }
 
 #[test_only]
