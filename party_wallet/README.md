@@ -30,9 +30,10 @@ by an arbitrary caller to extract Party-owned value.
   from the Party's accumulator balance and transfers one Coin to the recipient.
 - `is_installed`, `inbox_address`, and `settled_funds`: Read-only views.
 
-All authority-bearing production endpoints are `entry fun`s. None returns the
-leased `PartyAdminCap`, Vault receipt, witness, withdrawn asset, or a privileged
-reference.
+All authority-bearing production endpoints are composable `public fun`s so
+callers can install and use the plugin on a Vault created earlier in the same
+PTB. None returns the leased `PartyAdminCap`, Vault receipt, witness, withdrawn
+asset, or a privileged reference.
 
 ## Events
 

@@ -29,8 +29,10 @@ funds into that Recording's canonical royalty pool.
   selected coins sent to the Release and distributes their combined balance.
 - `is_installed`: Read-only, composable installation check.
 
-All authority-bearing production endpoints are `entry fun`. None returns the
-leased cap, Vault receipt, witness, balance, or privileged reference.
+All authority-bearing production endpoints are composable `public fun`s so
+callers can install and configure the plugin on a Vault created earlier in the
+same PTB. None returns the leased cap, Vault receipt, witness, balance, or
+privileged reference.
 
 ## Permission declaration
 

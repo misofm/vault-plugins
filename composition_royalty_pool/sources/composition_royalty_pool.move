@@ -25,7 +25,7 @@ const ENotVaultAdmin: u64 = 0;
 // === Installation ===
 
 /// Authorize this package on a Composition capability Vault.
-entry fun install<CompositionShare>(
+public fun install<CompositionShare>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
@@ -33,7 +33,7 @@ entry fun install<CompositionShare>(
 }
 
 /// Revoke this package from a Composition capability Vault.
-entry fun uninstall<CompositionShare>(
+public fun uninstall<CompositionShare>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
@@ -47,7 +47,7 @@ entry fun uninstall<CompositionShare>(
 /// The matching VaultAdminCap chooses which Currency pools may be created.
 /// The result cannot be redirected: the pool ID is claimed from the
 /// Composition UID and is typed by both CompositionShare and Currency.
-entry fun initialize_pool<CompositionShare, Currency>(
+public fun initialize_pool<CompositionShare, Currency>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     composition: &mut Composition<CompositionShare>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
@@ -62,7 +62,7 @@ entry fun initialize_pool<CompositionShare, Currency>(
 /// Receive coins sent to the Composition and deposit them into its canonical
 /// pool. Anyone may crank this after the plugin is installed, but the funds
 /// can only reach the pool derived from this Composition.
-entry fun receive_and_deposit<CompositionShare, Currency>(
+public fun receive_and_deposit<CompositionShare, Currency>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     composition: &mut Composition<CompositionShare>,
     pool: &mut RoyaltyPool<CompositionShare, Currency>,
@@ -77,7 +77,7 @@ entry fun receive_and_deposit<CompositionShare, Currency>(
 
 /// Redeem funds accumulated at the Composition address and deposit them into
 /// its canonical pool. Anyone may crank this after installation.
-entry fun redeem_and_deposit<CompositionShare, Currency>(
+public fun redeem_and_deposit<CompositionShare, Currency>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     composition: &mut Composition<CompositionShare>,
     pool: &mut RoyaltyPool<CompositionShare, Currency>,

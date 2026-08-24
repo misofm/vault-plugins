@@ -41,9 +41,10 @@ pin one bytecode version. Clients must evaluate the package's source, published
 bytecode, upgrade authority, dependencies, and witness shape before installation.
 See [SCORING.md](./SCORING.md) for the offchain acceptance model.
 
-Authority-bearing production operations are `entry fun`s. Read-only views and
-deliberately permissionless primitives remain composable where appropriate.
-Every capability lease is returned before the operation completes.
+Authority-bearing production operations are composable `public fun`s, allowing
+installation and setup against Vaults created earlier in the same PTB. Authority
+still comes from the matching `VaultAdminCap` and package witness, and every
+capability lease is returned before the operation completes.
 
 ## Installation
 
@@ -51,7 +52,7 @@ Installation is implemented by the plugin package so it can construct its own
 witness:
 
 ```move
-entry fun install<CompositionShare>(
+public fun install<CompositionShare>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {

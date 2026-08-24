@@ -25,7 +25,7 @@ const ENotVaultAdmin: u64 = 0;
 // === Installation ===
 
 /// Authorize this package on a Recording capability Vault.
-entry fun install<RecordingShare>(
+public fun install<RecordingShare>(
     vault: &mut Vault<RecordingAdminCap<RecordingShare>>,
     vault_admin_cap: &VaultAdminCap<RecordingAdminCap<RecordingShare>>,
 ) {
@@ -33,7 +33,7 @@ entry fun install<RecordingShare>(
 }
 
 /// Revoke this package from a Recording capability Vault.
-entry fun uninstall<RecordingShare>(
+public fun uninstall<RecordingShare>(
     vault: &mut Vault<RecordingAdminCap<RecordingShare>>,
     vault_admin_cap: &VaultAdminCap<RecordingAdminCap<RecordingShare>>,
 ) {
@@ -47,7 +47,7 @@ entry fun uninstall<RecordingShare>(
 /// The matching VaultAdminCap chooses which Currency pools may be created.
 /// The result cannot be redirected: the pool ID is claimed from the Recording
 /// UID and is typed by both RecordingShare and Currency.
-entry fun initialize_pool<RecordingShare, CompositionShare, Currency>(
+public fun initialize_pool<RecordingShare, CompositionShare, Currency>(
     vault: &mut Vault<RecordingAdminCap<RecordingShare>>,
     recording: &mut Recording<RecordingShare, CompositionShare>,
     vault_admin_cap: &VaultAdminCap<RecordingAdminCap<RecordingShare>>,
@@ -62,7 +62,7 @@ entry fun initialize_pool<RecordingShare, CompositionShare, Currency>(
 /// Receive coins sent to the Recording and deposit them into its canonical
 /// pool. Anyone may crank this after the plugin is installed, but the funds
 /// can only reach the pool derived from this Recording.
-entry fun receive_and_deposit<RecordingShare, CompositionShare, Currency>(
+public fun receive_and_deposit<RecordingShare, CompositionShare, Currency>(
     vault: &mut Vault<RecordingAdminCap<RecordingShare>>,
     recording: &mut Recording<RecordingShare, CompositionShare>,
     pool: &mut RoyaltyPool<RecordingShare, Currency>,
@@ -77,7 +77,7 @@ entry fun receive_and_deposit<RecordingShare, CompositionShare, Currency>(
 
 /// Redeem funds accumulated at the Recording address and deposit them into
 /// its canonical pool. Anyone may crank this after installation.
-entry fun redeem_and_deposit<RecordingShare, CompositionShare, Currency>(
+public fun redeem_and_deposit<RecordingShare, CompositionShare, Currency>(
     vault: &mut Vault<RecordingAdminCap<RecordingShare>>,
     recording: &mut Recording<RecordingShare, CompositionShare>,
     pool: &mut RoyaltyPool<RecordingShare, Currency>,

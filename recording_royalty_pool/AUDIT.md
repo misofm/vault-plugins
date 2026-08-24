@@ -113,7 +113,7 @@ vault replacement. Same shape and trust surface as `composition_royalty_pool`.
   (`tests/share.move`), so the composition cut and supply gates execute for
   real.
 - `sui move build --lint` warning-clean. All privileged endpoints are
-  `entry fun`; test-only wrappers stay out of published bytecode.
+  composable `public fun`s; test-only wrappers stay out of published bytecode.
 - This session's relevant hardening commits: `f23f557` (production-shaped
   fixtures), `e783155` (u64 error conventions), `77d6bdb` (double-install,
   stranger-crank, wrong-parent pool tests).

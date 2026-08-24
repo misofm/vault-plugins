@@ -20,8 +20,10 @@ Every withdrawal performs the same sequence:
    recipient.
 
 The plugin never returns `PartyAdminCap`, `sui::borrow::Borrow`, `Witness`, or
-`&mut UID`. Production withdrawal functions are `entry fun`s, so downstream
-packages cannot use them as authority trampolines.
+`&mut UID`. Production withdrawal functions are composable `public fun`s, but
+they require the matching `VaultAdminCap`, return the leased cap internally,
+and transfer rather than return the withdrawn asset, so downstream packages
+cannot use them as authority trampolines.
 
 ## Findings
 

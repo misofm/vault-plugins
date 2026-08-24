@@ -40,7 +40,7 @@ public struct ReleaseRevenueDistributedEvent<phantom Currency> has copy, drop {
 // === Installation ===
 
 /// Authorize this package on a Release capability Vault.
-entry fun install(
+public fun install(
     vault: &mut Vault<ReleaseAdminCap>,
     vault_admin_cap: &VaultAdminCap<ReleaseAdminCap>,
 ) {
@@ -48,7 +48,7 @@ entry fun install(
 }
 
 /// Revoke this package from a Release capability Vault.
-entry fun uninstall(
+public fun uninstall(
     vault: &mut Vault<ReleaseAdminCap>,
     vault_admin_cap: &VaultAdminCap<ReleaseAdminCap>,
 ) {
@@ -59,7 +59,7 @@ entry fun uninstall(
 
 /// Redeem `value` from the Release address and distribute it according to the
 /// immutable tracklist. Anyone may crank this after installation.
-entry fun redeem_and_distribute<Currency>(
+public fun redeem_and_distribute<Currency>(
     vault: &mut Vault<ReleaseAdminCap>,
     release: &mut Release,
     value: u64,
@@ -73,7 +73,7 @@ entry fun redeem_and_distribute<Currency>(
 /// Receive selected `Coin<Currency>` objects sent to the Release and
 /// distribute their combined value according to the immutable tracklist.
 /// Anyone may crank this after installation.
-entry fun receive_and_distribute<Currency>(
+public fun receive_and_distribute<Currency>(
     vault: &mut Vault<ReleaseAdminCap>,
     release: &mut Release,
     coins: vector<Receiving<Coin<Currency>>>,

@@ -25,8 +25,8 @@ royalty pool; the plugin adds the vault-cap-gated lifecycle around it.
 
 ## Why it's safe
 
-**Capability gating.** Every state-changing endpoint is `entry fun` and takes
-the matching `VaultAdminCap`, verified against the vault by object ID
+**Capability gating.** Every authority-bearing endpoint is a composable
+`public fun` and takes the matching `VaultAdminCap`, verified against the vault by object ID
 (`assert_admin`, `composition_routed_stake.move:164-169`). The vault's
 `borrow_as_plugin(witness::new())` enforces installation (the `Witness` is
 `public(package)`, `witness.move:9` — only this package can mint it), and the

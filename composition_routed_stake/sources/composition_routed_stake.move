@@ -32,7 +32,7 @@ const ERecordingNotForComposition: u64 = 3;
 // === Installation ===
 
 /// Authorize this package on a Composition capability Vault.
-entry fun install<CompositionShare>(
+public fun install<CompositionShare>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
@@ -40,7 +40,7 @@ entry fun install<CompositionShare>(
 }
 
 /// Revoke this package from a Composition capability Vault.
-entry fun uninstall<CompositionShare>(
+public fun uninstall<CompositionShare>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
@@ -52,7 +52,7 @@ entry fun uninstall<CompositionShare>(
 /// Redeem Composition-owned Recording shares, create the Composition-derived
 /// routed stake, and share it. The Recording reference pins both share types
 /// to a real Composition/Recording relationship.
-entry fun create_stake<RecordingShare, CompositionShare>(
+public fun create_stake<RecordingShare, CompositionShare>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     composition: &mut Composition<CompositionShare>,
     recording: &Recording<RecordingShare, CompositionShare>,
@@ -75,7 +75,7 @@ entry fun create_stake<RecordingShare, CompositionShare>(
 
 /// Register the routed stake with the canonical pool derived from the supplied
 /// Recording. The Vault administrator controls which currencies are enabled.
-entry fun register<RecordingShare, CompositionShare, Currency>(
+public fun register<RecordingShare, CompositionShare, Currency>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     composition: &mut Composition<CompositionShare>,
     recording: &Recording<RecordingShare, CompositionShare>,
@@ -92,7 +92,7 @@ entry fun register<RecordingShare, CompositionShare, Currency>(
 }
 
 /// Unregister the routed stake after its pending reward has been swept.
-entry fun unregister<RecordingShare, CompositionShare, Currency>(
+public fun unregister<RecordingShare, CompositionShare, Currency>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     composition: &mut Composition<CompositionShare>,
     recording: &Recording<RecordingShare, CompositionShare>,
@@ -110,7 +110,7 @@ entry fun unregister<RecordingShare, CompositionShare, Currency>(
 
 /// Remove the routed position and return its principal to the Composition
 /// address. Principal never becomes a caller-controlled Coin or Balance.
-entry fun unstake<RecordingShare, CompositionShare>(
+public fun unstake<RecordingShare, CompositionShare>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     composition: &mut Composition<CompositionShare>,
     routed: &mut RoutedStake<RecordingShare, CompositionShare>,
@@ -127,7 +127,7 @@ entry fun unstake<RecordingShare, CompositionShare>(
 
 /// Refill an empty routed stake from Recording shares held at the Composition
 /// address.
-entry fun restake<RecordingShare, CompositionShare>(
+public fun restake<RecordingShare, CompositionShare>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     composition: &mut Composition<CompositionShare>,
     routed: &mut RoutedStake<RecordingShare, CompositionShare>,

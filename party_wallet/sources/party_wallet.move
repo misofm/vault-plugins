@@ -9,7 +9,7 @@
 /// withdrawn object or coin to the recipient selected by the Vault administrator.
 ///
 /// Installation alone never makes withdrawals permissionless. Every production
-/// withdrawal is an `entry fun` requiring the matching `VaultAdminCap`, and no
+/// withdrawal is a `public fun` requiring the matching `VaultAdminCap`, and no
 /// endpoint returns the leased capability, its borrow receipt, or a privileged
 /// reference. The Party itself stores no plugin data.
 module party_wallet::party_wallet;
@@ -55,7 +55,7 @@ public struct FundsRedeemedEvent<phantom Currency> has copy, drop {
 // === Installation ===
 
 /// Authorize this package on a Party capability Vault.
-entry fun install(
+public fun install(
     vault: &mut Vault<PartyAdminCap>,
     vault_admin_cap: &VaultAdminCap<PartyAdminCap>,
 ) {
@@ -63,7 +63,7 @@ entry fun install(
 }
 
 /// Revoke this package from a Party capability Vault.
-entry fun uninstall(
+public fun uninstall(
     vault: &mut Vault<PartyAdminCap>,
     vault_admin_cap: &VaultAdminCap<PartyAdminCap>,
 ) {
@@ -78,7 +78,7 @@ entry fun uninstall(
 /// Aborts if the Vault administrator is wrong, the plugin is not installed, the
 /// Vault contains another Party's cap, or the receiving ticket is invalid for the
 /// supplied Party.
-entry fun receive_object<T: key + store>(
+public fun receive_object<T: key + store>(
     vault: &mut Vault<PartyAdminCap>,
     party: &mut Party,
     vault_admin_cap: &VaultAdminCap<PartyAdminCap>,
@@ -99,7 +99,7 @@ entry fun receive_object<T: key + store>(
 /// Aborts with `ENothingToReceive` if `objects_to_receive` is empty. It also
 /// aborts under the authorization and receiving conditions documented by
 /// `receive_object`.
-entry fun receive_objects<T: key + store>(
+public fun receive_objects<T: key + store>(
     vault: &mut Vault<PartyAdminCap>,
     party: &mut Party,
     vault_admin_cap: &VaultAdminCap<PartyAdminCap>,
@@ -122,7 +122,7 @@ entry fun receive_objects<T: key + store>(
 /// Aborts with `ENothingToReceive` if `coins` is empty. It also aborts if the
 /// Vault administrator, plugin installation, Party capability, or a receiving
 /// ticket is invalid.
-entry fun receive_coins<Currency>(
+public fun receive_coins<Currency>(
     vault: &mut Vault<PartyAdminCap>,
     party: &mut Party,
     vault_admin_cap: &VaultAdminCap<PartyAdminCap>,
@@ -149,7 +149,7 @@ entry fun receive_coins<Currency>(
 /// Aborts if the Vault administrator is wrong, the plugin is not installed, the
 /// Vault contains another Party's cap, `value` is zero, or the accumulator cannot
 /// cover the requested amount.
-entry fun redeem_coin<Currency>(
+public fun redeem_coin<Currency>(
     vault: &mut Vault<PartyAdminCap>,
     party: &mut Party,
     vault_admin_cap: &VaultAdminCap<PartyAdminCap>,

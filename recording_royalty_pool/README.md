@@ -31,8 +31,9 @@ to a different address and cannot squat the canonical one.
   canonical pool.
 - `is_installed` and `pool_address`: Read-only, composable views.
 
-All privileged production endpoints are `entry fun`; none returns the leased
-cap, Vault receipt, witness, or a privileged reference.
+All privileged production endpoints are composable `public fun`s so callers can
+install and configure the plugin on a Vault created earlier in the same PTB.
+None returns the leased cap, Vault receipt, witness, or a privileged reference.
 
 ## Permission declaration
 

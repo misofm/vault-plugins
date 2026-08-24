@@ -34,8 +34,10 @@ not borrow the Composition capability.
 - `restake`: Admin-only. Refills an empty wrapper from the Composition address.
 - `is_installed` and `stake_address`: Read-only, composable views.
 
-All authority-bearing production endpoints are `entry fun`. None returns the
-leased cap, Vault receipt, witness, principal, or privileged reference.
+All authority-bearing production endpoints are composable `public fun`s so
+callers can install and configure the plugin on a Vault created earlier in the
+same PTB. None returns the leased cap, Vault receipt, witness, principal, or
+privileged reference.
 
 ## Permission declaration
 
