@@ -30,6 +30,9 @@ packages cannot use them as authority trampolines.
   selection of receiving tickets, accumulator amounts, object types, currencies,
   and recipient addresses. This is equivalent to the authority of the custodied
   `PartyAdminCap`; installation does not delegate that choice to other callers.
+  **Disposition (2026-08-24):** accepted-by-design — the selection power is
+  equivalent to the custodied `PartyAdminCap`'s own authority and reaches no
+  other caller.
 - Anyone may send junk objects to a Party address. The administrator selects which
   tickets to receive, so unsolicited objects do not force execution or storage in
   the Party object.
@@ -37,6 +40,9 @@ packages cannot use them as authority trampolines.
   types whose defining modules withheld `store`.
 - Funded accumulator reads and insufficient-balance enforcement depend on framework
   natives stubbed by the Move unit-test VM and require an on-chain integration check.
+  **Disposition (2026-08-24):** accepted — unit-test VM limitation, not a code
+  gap; the on-chain integration check is the required follow-up before
+  production reliance.
 
 ## Regression tests
 
