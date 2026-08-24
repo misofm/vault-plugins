@@ -4,7 +4,7 @@
 
 [published.testnet]
 chain-id = "4c78adac"
-published-at = "0x8d61aecceb597441a0d675b44291706742859c8ff7755b3ed143823daa430c50"
-original-id = "0x8d61aecceb597441a0d675b44291706742859c8ff7755b3ed143823daa430c50"
+published-at = "0x2447321e57414fb9829f4bbeddffb1d29b14bf17db1ac31856b69956305b2f5f"
+original-id = "0x2447321e57414fb9829f4bbeddffb1d29b14bf17db1ac31856b69956305b2f5f"
 version = 1
 build-config = { flavor = "sui", edition = "2024" }
