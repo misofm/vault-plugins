@@ -47,7 +47,7 @@ Suggested score caps:
 
 Each plugin manifest should enumerate its authority explicitly:
 
-- target classes: Composition, Recording, and/or Release;
+- target classes: Party, Composition, Recording, and/or Release;
 - dynamic-field namespaces read, written, or removed;
 - objects or funds it can receive or transfer;
 - permissionless versus admin-triggered operations;

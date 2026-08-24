@@ -1,12 +1,12 @@
 # Miso Vault Plugins
 
-First-party business-logic packages for Miso protocol objects, authorized by
+First-party business-logic packages for Miso objects, authorized by
 [`misofm/vault`](https://github.com/misofm/vault).
 
-Extensions attach data to a `Composition`, `Recording`, or `Release`. Vault
-plugins temporarily exercise a custodied admin capability to perform a bounded
-workflow. Each directory in this repository is an independently versioned and
-published Move package.
+Extensions attach declarative data to a host object. Vault plugins temporarily
+exercise a custodied admin capability to perform a bounded workflow on a
+`Party`, `Composition`, `Recording`, or `Release`. Each directory in this
+repository is an independently versioned and published Move package.
 
 ## Packages
 
@@ -16,6 +16,7 @@ published Move package.
 | [`recording_royalty_pool`](./recording_royalty_pool) | Recording | Creates the canonical Recording-derived royalty pool and folds Recording-addressed funds into it. |
 | [`release_revenue_distributor`](./release_revenue_distributor) | Release | Receives or redeems Release-addressed revenue and distributes it to the Recording addresses and splits fixed by the tracklist. |
 | [`composition_routed_stake`](./composition_routed_stake) | Composition | Manages Composition-owned Recording shares in a derived `RoutedStake`, with principal and rewards constrained to Composition-controlled destinations. |
+| [`party_wallet`](./party_wallet) | Party | Admin-gated receipt of Party-addressed objects and accumulator funds to an explicitly selected recipient. |
 
 See each package README for its complete authority and funds-flow declaration.
 
