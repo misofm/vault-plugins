@@ -122,6 +122,36 @@ fun pool_parent_is_composition_and_survives_vault_replacement() {
 }
 
 #[test]
+fun fresh_stake_can_register_before_pool_is_shared() {
+    let mut scenario = test_scenario::begin(@0x0);
+    let (mut composition, currency, mut vault, vault_admin_cap, mut shares) =
+        fixture(scenario.ctx());
+    let pool_id = object::id_from_address(
+        plugin::pool_address<Share, CURRENCY>(&composition),
+    );
+
+    plugin::install_for_testing(&mut vault, &vault_admin_cap);
+    let mut pool = plugin::new_pool_for_testing<Share, CURRENCY>(
+        &mut vault,
+        &mut composition,
+        &vault_admin_cap,
+    );
+    let mut holder = stake::new(shares.split(100), scenario.ctx());
+    pool.register_stake(&mut holder);
+    assert_eq!(pool.staked_shares(), 100);
+    pool.unregister_stake(&mut holder);
+    pool.share();
+    balance::destroy_for_testing(stake::destroy(holder));
+
+    scenario.next_tx(@0xA);
+    let pool: RoyaltyPool<Share, CURRENCY> = scenario.take_shared_by_id(pool_id);
+    test_scenario::return_shared(pool);
+    plugin::uninstall_for_testing(&mut vault, &vault_admin_cap);
+    destroy_fixture(composition, currency, vault, vault_admin_cap, shares);
+    scenario.end();
+}
+
+#[test]
 fun received_composition_revenue_is_forced_into_canonical_pool() {
     let mut scenario = test_scenario::begin(@0x0);
     let (mut composition, currency, mut vault, vault_admin_cap, mut shares) =

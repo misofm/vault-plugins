@@ -46,21 +46,39 @@ public fun uninstall<RecordingShare>(
 
 // === Privileged plugin operations ===
 
-/// Create and share the canonical pool derived from this Recording.
+/// Create and return the canonical pool derived from this Recording.
 ///
 /// The matching VaultAdminCap chooses which Currency pools may be created.
 /// The result cannot be redirected: the pool ID is claimed from the Recording
-/// UID and is typed by both RecordingShare and Currency.
+/// UID and is typed by both RecordingShare and Currency. The caller decides
+/// when to share it, allowing fresh stakes to be registered in the same PTB
+/// before the pool becomes a shared object.
+public fun new_pool<RecordingShare, CompositionShare, Currency>(
+    vault: &mut Vault<RecordingAdminCap<RecordingShare>>,
+    recording: &mut Recording<RecordingShare, CompositionShare>,
+    vault_admin_cap: &VaultAdminCap<RecordingAdminCap<RecordingShare>>,
+): RoyaltyPool<RecordingShare, Currency> {
+    assert_admin(vault, vault_admin_cap);
+    let (cap, receipt) = vault.borrow_as_plugin(witness::new());
+    let pool = pool::new<RecordingShare, Currency>(recording.uid_mut(&cap));
+    vault.put_back(cap, receipt);
+    pool
+}
+
+/// Create and share the canonical pool derived from this Recording.
+///
+/// Convenience wrapper over `new_pool` for callers that do not need to
+/// register freshly-created stakes before sharing the pool.
 public fun initialize_pool<RecordingShare, CompositionShare, Currency>(
     vault: &mut Vault<RecordingAdminCap<RecordingShare>>,
     recording: &mut Recording<RecordingShare, CompositionShare>,
     vault_admin_cap: &VaultAdminCap<RecordingAdminCap<RecordingShare>>,
 ) {
-    assert_admin(vault, vault_admin_cap);
-    let (cap, receipt) = vault.borrow_as_plugin(witness::new());
-    let pool = pool::new<RecordingShare, Currency>(recording.uid_mut(&cap));
-    vault.put_back(cap, receipt);
-    pool.share();
+    new_pool<RecordingShare, CompositionShare, Currency>(
+        vault,
+        recording,
+        vault_admin_cap,
+    ).share()
 }
 
 /// Receive coins sent to the Recording and deposit them into its canonical
@@ -145,6 +163,15 @@ public fun uninstall_for_testing<RecordingShare>(
     vault_admin_cap: &VaultAdminCap<RecordingAdminCap<RecordingShare>>,
 ) {
     uninstall(vault, vault_admin_cap)
+}
+
+#[test_only]
+public fun new_pool_for_testing<RecordingShare, CompositionShare, Currency>(
+    vault: &mut Vault<RecordingAdminCap<RecordingShare>>,
+    recording: &mut Recording<RecordingShare, CompositionShare>,
+    vault_admin_cap: &VaultAdminCap<RecordingAdminCap<RecordingShare>>,
+): RoyaltyPool<RecordingShare, Currency> {
+    new_pool<RecordingShare, CompositionShare, Currency>(vault, recording, vault_admin_cap)
 }
 
 #[test_only]

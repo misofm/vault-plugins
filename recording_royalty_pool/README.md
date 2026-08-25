@@ -21,8 +21,12 @@ to a different address and cannot squat the canonical one.
 
 - `install`: Admin-only. Authorizes the canonical package witness on the Vault.
 - `uninstall`: Admin-only. Immediately revokes the package witness.
+- `new_pool`: Admin-only and installation-gated. Returns the one
+  Recording-derived pool unshared so a PTB can register fresh holder stakes
+  before sharing it.
 - `initialize_pool`: Admin-only and installation-gated. Creates and shares the
-  one Recording-derived pool for a `RecordingShare`/`Currency` pair.
+  one Recording-derived pool for a `RecordingShare`/`Currency` pair. This is
+  the convenience wrapper for callers that do not need pre-share setup.
 - `receive_and_deposit`: Permissionless after installation. Receives selected
   `Coin<Currency>` objects sent to the Recording and deposits their combined
   balance into the canonical pool.
@@ -37,7 +41,8 @@ to a different address and cannot squat the canonical one.
 
 All privileged production endpoints are composable `public fun`s so callers can
 install and configure the plugin on a Vault created earlier in the same PTB.
-None returns the leased cap, Vault receipt, witness, or a privileged reference.
+`new_pool` returns only the canonical unshared pool; none returns the leased
+cap, Vault receipt, witness, or a privileged reference.
 
 ## Permission declaration
 

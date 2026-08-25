@@ -4,6 +4,13 @@
 **Toolchain:** sui 1.77.2 · **Framework:** pinned rev
 `06734f6ff0af45d8632a14a4dc4b100197f6b1a2`
 
+**Post-audit change (2026-08-25):** `new_pool` now returns the canonical pool
+unshared so a PTB can register fresh stakes before calling `pool::share`;
+`initialize_pool` remains the create-and-share wrapper. The added path uses the
+same Vault authorization and derived-object claim and returns no capability or
+privileged reference. The package now passes 10/10 tests, including
+register-before-share registration.
+
 Pinned deps (`Move.toml`/`Move.lock`): `miso` (protocol) `c23fe7fc`
 (re-pinned from `7c13e40a` 2026-08-23), `vault` `2c799916`, `royalty_pool`
 `8470e492`, `hikida` `e88c6fa8`; transitive: `miso_share` `d67ff8c` (the

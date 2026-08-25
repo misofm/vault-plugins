@@ -45,21 +45,35 @@ public fun uninstall<CompositionShare>(
 
 // === Privileged plugin operations ===
 
-/// Create and share the canonical pool derived from this Composition.
+/// Create and return the canonical pool derived from this Composition.
 ///
 /// The matching VaultAdminCap chooses which Currency pools may be created.
 /// The result cannot be redirected: the pool ID is claimed from the
-/// Composition UID and is typed by both CompositionShare and Currency.
+/// Composition UID and is typed by both CompositionShare and Currency. The
+/// caller decides when to share it, allowing fresh stakes to be registered in
+/// the same PTB before the pool becomes a shared object.
+public fun new_pool<CompositionShare, Currency>(
+    vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
+    composition: &mut Composition<CompositionShare>,
+    vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
+): RoyaltyPool<CompositionShare, Currency> {
+    assert_admin(vault, vault_admin_cap);
+    let (cap, receipt) = vault.borrow_as_plugin(witness::new());
+    let pool = pool::new<CompositionShare, Currency>(composition.uid_mut(&cap));
+    vault.put_back(cap, receipt);
+    pool
+}
+
+/// Create and share the canonical pool derived from this Composition.
+///
+/// Convenience wrapper over `new_pool` for callers that do not need to
+/// register freshly-created stakes before sharing the pool.
 public fun initialize_pool<CompositionShare, Currency>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     composition: &mut Composition<CompositionShare>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
-    assert_admin(vault, vault_admin_cap);
-    let (cap, receipt) = vault.borrow_as_plugin(witness::new());
-    let pool = pool::new<CompositionShare, Currency>(composition.uid_mut(&cap));
-    vault.put_back(cap, receipt);
-    pool.share();
+    new_pool<CompositionShare, Currency>(vault, composition, vault_admin_cap).share()
 }
 
 /// Receive coins sent to the Composition and deposit them into its canonical
@@ -142,6 +156,15 @@ public fun uninstall_for_testing<CompositionShare>(
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
     uninstall(vault, vault_admin_cap)
+}
+
+#[test_only]
+public fun new_pool_for_testing<CompositionShare, Currency>(
+    vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
+    composition: &mut Composition<CompositionShare>,
+    vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
+): RoyaltyPool<CompositionShare, Currency> {
+    new_pool<CompositionShare, Currency>(vault, composition, vault_admin_cap)
 }
 
 #[test_only]
