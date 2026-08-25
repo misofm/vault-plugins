@@ -8,4 +8,4 @@ authors = ["Miso Labs, Inc. (build@miso.network)"]
 miso = { git = "https://github.com/misonetwork/protocol.git", rev = "7bda0bb740c32a75ef76c0739cb671b3de77d338" }
 vault = { git = "https://github.com/misofm/vault.git", rev = "18e9beb6057108ca97cafc24fed36ab3929bfb99" }
 hikida = { git = "https://github.com/unconfirmedlabs/hikida.git", rev = "e88c6fa88348bc2764823cf3666d7ca5e08b2f4f" }
-royalty_pool = { git = "https://github.com/misonetwork/royalty-pool.git", rev = "6a03c62182234b053e0b794de2a5be53a81bc584" }
+royalty_pool = { git = "https://github.com/misonetwork/royalty-pool.git", rev = "ff459c9a69e154696d36358d6155ec23a329b46b" }

@@ -25,7 +25,7 @@ deps = { std = "MoveStdlib", sui = "Sui" }
 [pinned.testnet.composition_royalty_pool]
 source = { root = true }
 use_environment = "testnet"
-manifest_digest = "C6E950098D6948544F26422D1E286B6CC814409CF89E11A06D049D607B590528"
+manifest_digest = "7649954CDFB271E9073B59360190329162111A227430707DAD0372CCC391DDF3"
 deps = { hikida = "hikida", miso = "miso", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.testnet.generic_witness]
@@ -53,7 +53,7 @@ manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332
 deps = { std = "MoveStdlib", sui = "Sui" }
 
 [pinned.testnet.royalty_pool]
-source = { git = "https://github.com/misonetwork/royalty-pool.git", subdir = ".", rev = "6a03c62182234b053e0b794de2a5be53a81bc584" }
+source = { git = "https://github.com/misonetwork/royalty-pool.git", subdir = ".", rev = "ff459c9a69e154696d36358d6155ec23a329b46b" }
 use_environment = "testnet"
 manifest_digest = "C42EB345D6ECD90E5E56F9D019D92139F40C0F80F0A5F6F6D4D28FDADB203CF2"
 deps = { hikida = "hikida", std = "MoveStdlib", sui = "Sui" }
