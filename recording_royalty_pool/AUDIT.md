@@ -8,8 +8,16 @@
 unshared so a PTB can register fresh stakes before calling `pool::share`;
 `initialize_pool` remains the create-and-share wrapper. The added path uses the
 same Vault authorization and derived-object claim and returns no capability or
-privileged reference. The package now passes 10/10 tests, including
-register-before-share registration.
+privileged reference. The package now passes 12/12 tests, including
+register-before-share registration, exact partial redemption, revocation, and
+framework-result chaining.
+
+**Post-audit change (2026-08-27):** the accumulator-specific sweep wrapper was
+removed and the exact-amount `redeem_and_deposit` API restored. Clients can
+chain `sui::balance::settled_funds_value` into it atomically without weakening
+the canonical-pool destination check. Because the Testnet lineage recorded in
+`Published.toml` exposed the removed public function, this revision requires a
+fresh publish rather than a compatible upgrade.
 
 Pinned deps (`Move.toml`/`Move.lock`): `miso` (protocol) `c23fe7fc`
 (re-pinned from `7c13e40a` 2026-08-23), `vault` `2c799916`, `royalty_pool`
@@ -53,9 +61,10 @@ vault replacement. Same shape and trust surface as `composition_royalty_pool`.
   `pool.assert_derived_from(recording.id())`
   (`recording_royalty_pool.move:75,96`), recomputing the derived address from
   `(recording_id, RecordingShare, Currency)` (`pool.move:381-389`). The
-  caller chooses *when* to fold and *which tickets*, or sweeps the amount
-  reported by `AccumulatorRoot`; the caller never chooses an accumulator
-  amount or the destination; a wrong-parent pool of the same type aborts
+  caller chooses *when* to fold and *which tickets/amount*; the caller never
+  chooses the destination. A PTB may derive the amount from the framework's
+  commit-settled `settled_funds_value` result without changing this destination
+  constraint; a wrong-parent pool of the same type aborts
   `EPoolNotDerivedFromParent` (tested). The hikida pulls
   (`hikida.move:14-19,29-31`) draw only from the UID the plugin lends — the
   recording's — via framework `public_receive`/`withdraw_funds_from_object`.
@@ -85,18 +94,18 @@ vault replacement. Same shape and trust surface as `composition_royalty_pool`.
    address meanwhile. Funds sent to the pool's derived address before it
    exists are also safe — a later `pool::new` claims exactly that ID and the
    pool's own `receive_and_deposit` recovers them (`pool.move:205-222`).
-   `sweep_and_deposit` additionally aborts with `ENoSettledFunds` when the
-   commit-start snapshot is zero; funds sent during that commit become
-   sweepable in a later commit. The framework caps its snapshot result at
-   `u64::MAX`, so any excess requires a later sweep. Concurrent cranks can read
-   the same snapshot; after one drains it, another may abort during withdrawal.
-   A sweep can also abort if adding its balance would overflow the pool's `u64`
-   balance; outstanding rewards must be claimed to free capacity before retrying.
+   A PTB passing a zero `settled_funds_value` result aborts in `hikida`; funds
+   sent during that commit become visible in a later commit. The framework caps
+   its snapshot result at `u64::MAX`, so any excess requires another PTB.
+   Concurrent cranks can read the same snapshot; after one drains it, another
+   may abort during withdrawal. A redemption can also abort if adding its
+   balance would overflow the pool's `u64` balance; outstanding rewards must be
+   claimed to free capacity before retrying.
 2. **Cap scope is permanent root.** `recording.uid_mut` is root over *all*
    dynamic fields on the recording — including other extensions' fields — in
    any lifecycle state (`recording.move:307-318`). Authorizing any plugin on
    this vault means trusting it with that whole surface; this plugin uses it
-   only to claim the pool ID and receive/sweep funds.
+   only to claim the pool ID and receive/redeem funds.
 3. **Uninstall is immediate**, needs no plugin cooperation
    (`vault.move:167-176`); cross-transaction in-flight borrows are impossible
    (hot potato).
@@ -114,18 +123,18 @@ vault replacement. Same shape and trust surface as `composition_royalty_pool`.
 
 ## Verification
 
-- **9/9 tests passing** (`sui move test`, sui 1.77.2). Coverage: install /
+- **12/12 tests passing** (`sui move test`, sui 1.78.1). Coverage: install /
   uninstall lifecycle and double-install abort (`EPluginAlreadyAuthorized`);
   pre-installation pool-init abort (`EPluginNotAuthorized`); pool parented to
   the recording with address stable across vault destruction/replacement;
   received-coin deposits claimable pro-rata from a real fixed-supply share
   stake; foreign `VaultAdminCap` rejected (`ENotVaultAdmin`); a wrong-parent
-  pool rejected on the sweep surface (`EPoolNotDerivedFromParent`); a
-  capability-less `STRANGER` successfully cranking Recording-addressed coins;
-  and an explicit empty-sweep abort (`ENoSettledFunds`). The local Move test
-  harness does not populate `AccumulatorRoot` snapshots from native accumulator
-  writes, so the nonzero snapshot-to-redemption bridge is build/type-checked
-  but cannot be exercised with a synthetic root balance.
+  pool rejected on the exact-redemption surface (`EPoolNotDerivedFromParent`); a
+  capability-less `STRANGER` successfully cranking Recording-addressed funds;
+  successful exact accumulator redemption by a permissionless crank; partial
+  redemptions preserving the accumulator remainder across transactions;
+  revocation disabling redemption; and the framework reader's zero `u64`
+  result reaching the exact API's `hikida` guard.
 - Fixtures are production-shaped (commit `f23f557`): recordings issued
   through the real `recording::new` flow with a genuine registry currency
   (`tests/share.move`), so the composition cut and supply gates execute for

@@ -70,11 +70,19 @@ Run commands from the package directory:
 cd composition_royalty_pool
 sui move build
 sui move test --coverage
+sui move coverage summary
 ```
 
 Every plugin includes a multi-transaction `sui::test_scenario` flow plus
 focused authorization and destination-integrity tests. Dependency revisions and
 resolved package identities are committed in `Move.toml` and `Move.lock`.
+
+`test_scenario` does not advance consensus settlement into a funded
+`AccumulatorRoot`. The suites type-check a framework-derived zero `u64` through
+the exact redemption APIs and exercise positive exact redemptions directly.
+After fresh publication, the positive
+`settled_funds_value -> redeem` command-result chain remains a required network
+integration check.
 
 ## License
 

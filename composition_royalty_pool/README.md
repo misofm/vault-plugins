@@ -30,12 +30,9 @@ to a different address and cannot squat the canonical one.
 - `receive_and_deposit`: Permissionless after installation. Receives selected
   `Coin<Currency>` objects sent to the Composition and deposits their combined
   balance into the canonical pool.
-- `sweep_and_deposit`: Permissionless after installation. Reads the `Currency`
-  balance settled at the Composition address at the start of the current
-  consensus commit and deposits up to `u64::MAX` per call into the canonical
-  pool. It aborts with `ENoSettledFunds` when no positive amount is eligible;
-  a larger balance requires repeated calls, and funds sent later in the same
-  commit remain for a subsequent sweep.
+- `redeem_and_deposit`: Permissionless after installation. Redeems a selected
+  amount from the Composition's funds accumulator and deposits it into the
+  canonical pool.
 - `is_installed` and `pool_address`: Read-only, composable views.
 
 All privileged production endpoints are composable `public fun`s so callers can
@@ -53,20 +50,23 @@ cap, Vault receipt, witness, or a privileged reference.
   `RoyaltyPool` derived from that same Composition and matching type arguments.
 - Initialization: requires the matching `VaultAdminCap`.
 - Folding: permissionless after installation; callers choose receiving tickets
-  or sweep the settled accumulator balance, but cannot choose a different
-  destination pool.
+  or an accumulator amount, but cannot choose a different destination pool.
 - External packages: `miso`, `vault`, `royalty_pool`, and `hikida` at the exact
   revisions pinned in `Move.toml`.
 
 ## Build and test
 
+To redeem all currently settled funds, compose two Move calls in one PTB: call
+`sui::balance::settled_funds_value<Currency>` with the shared
+`AccumulatorRoot` and the Composition address, then pass its `u64` result to
+`redeem_and_deposit`. The calls are atomic; a zero result aborts in `hikida`,
+and the framework's `u64::MAX` cap means larger balances require another PTB.
+
 The package includes `sui::test_scenario` flows covering canonical shared-pool
-creation, cross-transaction receives, sweep destination validation, and the
-explicit empty-sweep abort. The local Move harness does not execute consensus
-settlement, so it cannot materialize a nonzero `AccumulatorRoot` snapshot from
-`send_funds`; nonzero sweep behavior relies on the pinned framework's
-`settled_funds_value` and withdrawal primitives and must be exercised in a
-network integration test.
+creation, cross-transaction receive and exact-redemption deposits, and
+canonical-pool enforcement. Exact-redemption scenarios also cover permissionless
+cranking, partial withdrawals across transactions, revocation, and direct
+type-safe feeding of the framework reader's zero result into the plugin API.
 
 ```sh
 sui move build

@@ -18,11 +18,9 @@ use vault::vault::{Self, Vault, VaultAdminCap};
 const ADMIN: address = @0xA;
 const RECIPIENT: address = @0xB;
 const SYSTEM: address = @0x0;
-
 const EUnauthorized: u64 = 0;
 const ENoValueToRedeem: u64 = 1;
 const ENotVaultAdmin: u64 = 1;
-const ENoSettledFunds: u64 = 2;
 const EPluginAlreadyAuthorized: u64 = 1;
 const EPluginNotAuthorized: u64 = 2;
 
@@ -353,15 +351,93 @@ fun receive_coins_rejects_an_empty_batch() {
 }
 
 #[test, expected_failure(abort_code = ENoValueToRedeem, location = hikida::hikida)]
-fun redeem_zero_aborts_in_hikida() {
-    let ctx = &mut tx_context::dummy();
-    let (mut party, mut vault, vault_admin_cap) = local_fixture(ctx);
-    plugin::install_for_testing(&mut vault, &vault_admin_cap);
+fun framework_settled_value_can_feed_exact_redemption() {
+    let mut scenario = ts::begin(SYSTEM);
+    sui::accumulator::create_for_testing(scenario.ctx());
+    new_vaulted_party(&mut scenario, false, true);
+
+    scenario.next_tx(ADMIN);
+    let mut party = scenario.take_shared<Party>();
+    let mut vault = scenario.take_shared<Vault<PartyAdminCap>>();
+    let root = scenario.take_shared<AccumulatorRoot>();
+    let vault_admin_cap = scenario.take_from_sender<VaultAdminCap<PartyAdminCap>>();
+    let value = balance::settled_funds_value<SUI>(&root, plugin::inbox_address(&party));
+    assert_eq!(value, 0);
     balance::destroy_for_testing(plugin::redeem_balance_for_testing<SUI>(
         &mut vault,
         &mut party,
         &vault_admin_cap,
-        0,
+        value,
+    ));
+    abort
+}
+
+#[test]
+fun partial_redemptions_preserve_accumulator_remainder() {
+    let mut scenario = ts::begin(ADMIN);
+    let party_id = new_vaulted_party(&mut scenario, false, true);
+
+    scenario.next_tx(ADMIN);
+    balance::create_for_testing<SUI>(1_000).send_funds(party_id.to_address());
+
+    scenario.next_tx(ADMIN);
+    {
+        let mut party = scenario.take_shared<Party>();
+        let mut vault = scenario.take_shared<Vault<PartyAdminCap>>();
+        let vault_admin_cap = scenario.take_from_sender<VaultAdminCap<PartyAdminCap>>();
+        let first = plugin::redeem_balance_for_testing<SUI>(
+            &mut vault,
+            &mut party,
+            &vault_admin_cap,
+            400,
+        );
+        assert_eq!(first.value(), 400);
+        balance::destroy_for_testing(first);
+        ts::return_shared(vault);
+        ts::return_shared(party);
+        scenario.return_to_sender(vault_admin_cap);
+    };
+
+    scenario.next_tx(ADMIN);
+    {
+        let mut party = scenario.take_shared<Party>();
+        let mut vault = scenario.take_shared<Vault<PartyAdminCap>>();
+        let vault_admin_cap = scenario.take_from_sender<VaultAdminCap<PartyAdminCap>>();
+        let second = plugin::redeem_balance_for_testing<SUI>(
+            &mut vault,
+            &mut party,
+            &vault_admin_cap,
+            600,
+        );
+        assert_eq!(second.value(), 600);
+        balance::destroy_for_testing(second);
+        ts::return_shared(vault);
+        ts::return_shared(party);
+        scenario.return_to_sender(vault_admin_cap);
+    };
+
+    scenario.end();
+}
+
+/// Accumulator overdraw is a native failure rather than a stable Move abort
+/// code, so this test intentionally accepts the native failure category.
+#[test, expected_failure]
+fun redeem_more_than_available_aborts() {
+    let mut scenario = ts::begin(ADMIN);
+    let party_id = new_vaulted_party(&mut scenario, false, true);
+
+    scenario.next_tx(ADMIN);
+    balance::create_for_testing<SUI>(500).send_funds(party_id.to_address());
+
+    scenario.next_tx(ADMIN);
+    let mut party = scenario.take_shared<Party>();
+    let mut vault = scenario.take_shared<Vault<PartyAdminCap>>();
+    let vault_admin_cap = scenario.take_from_sender<VaultAdminCap<PartyAdminCap>>();
+    balance::destroy_for_testing(plugin::redeem_balance_for_testing<SUI>(
+        &mut vault,
+        &mut party,
+        &vault_admin_cap,
+        501,
     ));
     abort
 }
@@ -373,43 +449,4 @@ fun inbox_address_is_the_party_id_as_an_address() {
     assert_eq!(plugin::inbox_address(&party), object::id(&party).to_address());
     destroy(party_admin_cap);
     destroy(party);
-}
-
-#[test]
-fun settled_funds_is_zero_for_an_unfunded_party() {
-    let mut scenario = ts::begin(SYSTEM);
-    sui::accumulator::create_for_testing(scenario.ctx());
-
-    scenario.next_tx(ADMIN);
-    let (party, party_admin_cap) = new_party(false, scenario.ctx());
-    party.share(&party_admin_cap);
-    transfer::public_transfer(party_admin_cap, ADMIN);
-
-    scenario.next_tx(ADMIN);
-    let party = scenario.take_shared<Party>();
-    let root = scenario.take_shared<AccumulatorRoot>();
-    assert_eq!(plugin::settled_funds<SUI>(&root, &party), 0);
-    ts::return_shared(root);
-    ts::return_shared(party);
-    scenario.end();
-}
-
-#[test, expected_failure(abort_code = ENoSettledFunds, location = plugin)]
-fun sweep_aborts_when_no_funds_are_settled() {
-    let mut scenario = ts::begin(SYSTEM);
-    sui::accumulator::create_for_testing(scenario.ctx());
-    new_vaulted_party(&mut scenario, false, true);
-
-    scenario.next_tx(ADMIN);
-    let mut party = scenario.take_shared<Party>();
-    let mut vault = scenario.take_shared<Vault<PartyAdminCap>>();
-    let root = scenario.take_shared<AccumulatorRoot>();
-    let vault_admin_cap = scenario.take_from_sender<VaultAdminCap<PartyAdminCap>>();
-    balance::destroy_for_testing(plugin::sweep_balance_for_testing<SUI>(
-        &mut vault,
-        &mut party,
-        &root,
-        &vault_admin_cap,
-    ));
-    abort
 }

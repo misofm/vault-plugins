@@ -18,7 +18,6 @@ module party_wallet::party_wallet;
 use hikida::hikida;
 use miso_party::party::{Party, PartyAdminCap};
 use party_wallet::witness::{Self, Witness};
-use sui::accumulator::AccumulatorRoot;
 use sui::balance::Balance;
 use sui::coin::Coin;
 use sui::event::emit;
@@ -32,9 +31,6 @@ const ENothingToReceive: u64 = 0;
 
 /// The supplied VaultAdminCap belongs to another Vault.
 const ENotVaultAdmin: u64 = 1;
-
-/// No funds of the requested currency were settled for the Party.
-const ENoSettledFunds: u64 = 2;
 
 // === Events ===
 
@@ -159,33 +155,6 @@ public fun redeem_balance<Currency>(
     value: u64,
 ): Balance<Currency> {
     assert_admin(vault, vault_admin_cap);
-    redeem_balance_impl<Currency>(vault, party, value)
-}
-
-/// Redeem the settled `Currency` amount reported for the Party address and
-/// return a Balance for the caller's PTB to consume.
-///
-/// Funds sent during the current consensus commit are not yet settled and
-/// remain available for a later sweep. Aborts with `ENoSettledFunds` when the
-/// settled amount is zero. The framework caps the reported amount at
-/// `u64::MAX`; any excess remains for a later sweep.
-public fun sweep_balance<Currency>(
-    vault: &mut Vault<PartyAdminCap>,
-    party: &mut Party,
-    root: &AccumulatorRoot,
-    vault_admin_cap: &VaultAdminCap<PartyAdminCap>,
-): Balance<Currency> {
-    assert_admin(vault, vault_admin_cap);
-    let value = settled_funds<Currency>(root, party);
-    assert!(value > 0, ENoSettledFunds);
-    redeem_balance_impl<Currency>(vault, party, value)
-}
-
-fun redeem_balance_impl<Currency>(
-    vault: &mut Vault<PartyAdminCap>,
-    party: &mut Party,
-    value: u64,
-): Balance<Currency> {
     let party_id = object::id(party);
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     let balance = hikida::redeem_balance<Currency>(party.uid_mut(&cap), value);
@@ -204,12 +173,6 @@ public fun is_installed(vault: &Vault<PartyAdminCap>): bool {
 /// Return the Party ID as the address to which objects or funds may be sent.
 public fun inbox_address(party: &Party): address {
     object::id(party).to_address()
-}
-
-/// Return the Party's accumulator balance settled at the start of the current
-/// consensus commit.
-public fun settled_funds<Currency>(root: &AccumulatorRoot, party: &Party): u64 {
-    sui::balance::settled_funds_value<Currency>(root, inbox_address(party))
 }
 
 // === Private helpers ===
@@ -289,16 +252,6 @@ public fun redeem_balance_for_testing<Currency>(
     value: u64,
 ): Balance<Currency> {
     redeem_balance<Currency>(vault, party, vault_admin_cap, value)
-}
-
-#[test_only]
-public fun sweep_balance_for_testing<Currency>(
-    vault: &mut Vault<PartyAdminCap>,
-    party: &mut Party,
-    root: &AccumulatorRoot,
-    vault_admin_cap: &VaultAdminCap<PartyAdminCap>,
-): Balance<Currency> {
-    sweep_balance<Currency>(vault, party, root, vault_admin_cap)
 }
 
 #[test_only]

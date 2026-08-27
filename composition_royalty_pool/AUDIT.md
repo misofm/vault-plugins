@@ -9,8 +9,16 @@
 unshared so a PTB can register fresh stakes before calling `pool::share`;
 `initialize_pool` remains the create-and-share wrapper. The added path uses the
 same Vault authorization and derived-object claim and returns no capability or
-privileged reference. The package now passes 10/10 tests, including
-register-before-share composition.
+privileged reference. The package now passes 12/12 tests, including
+register-before-share composition, exact partial redemption, revocation, and
+framework-result chaining.
+
+**Post-audit change (2026-08-27):** the accumulator-specific sweep wrapper was
+removed and the exact-amount `redeem_and_deposit` API restored. Clients can
+chain `sui::balance::settled_funds_value` into it atomically without weakening
+the canonical-pool destination check. Because the Testnet lineage recorded in
+`Published.toml` exposed the removed public function, this revision requires a
+fresh publish rather than a compatible upgrade.
 
 **Pinned dependencies** (by git rev, per `Move.toml`/`Move.lock`): `miso`
 (protocol) `c23fe7fc` (re-pinned from `7c13e40a` 2026-08-23), `vault`
@@ -55,12 +63,10 @@ survives vault replacement.
   foreign-parent or wrongly-typed pool aborts `EPoolNotDerivedFromParent`.
   The funds are equally pinned (hikida.move:14-31): `receive_balance`
   accepts only tickets for objects transferred to the Composition address,
-  `redeem_balance` withdraws from that object's own funds accumulator.
-  `sweep_and_deposit` derives the withdrawal amount from the `Currency` balance
-  settled at the Composition address at the beginning of the current consensus
-  commit. The framework clamps each read to `u64::MAX`, so larger balances are
-  swept over repeated calls. A crank chooses receiving tickets or triggers
-  that settled-balance sweep — never *where value goes*.
+  `redeem_balance` withdraws from that object's own funds accumulator. A crank
+  chooses receiving tickets or a redemption amount — never *where value goes*.
+  A PTB may derive that amount from the framework's commit-settled
+  `settled_funds_value` result without changing this destination constraint.
 - **Object binding is sound.** `composition::uid_mut` is type-scoped
   (composition.move:222), but exactly one `CompositionAdminCap` exists per
   share type: `composition::new` derives it via `claim` and consumes the
@@ -85,9 +91,9 @@ survives vault replacement.
 
 1. **Register a stake before funding.** Cranks abort `ENoStakedShares`
    until the first `register_stake`; funds at the Composition address are
-   safe but idle meanwhile. An empty sweep aborts early with
-   `ENoSettledFunds`, before the plugin borrows the vaulted cap. Funds arriving
-   after the commit snapshot are intentionally left for the next sweep.
+   safe but idle meanwhile. Zero-value folds abort in `hikida`; a PTB using
+   `settled_funds_value` therefore aborts when the commit-start snapshot is
+   empty. Funds arriving after that snapshot remain for a later transaction.
 2. **`uninstall` is immediate** — cranks and pool creation then abort
    `EPluginNotAuthorized`; funds already in the pool are unaffected.
 3. **Vault replacement needs re-install.** The pool address is stable
@@ -107,16 +113,16 @@ survives vault replacement.
 
 ## Verification
 
-- **9/9 tests passing** (`sui move test`): installation lifecycle and
+- **12/12 tests passing** (`sui move test`): installation lifecycle and
   non-idempotence (`EPluginAlreadyAuthorized`), init-before-install
   (`EPluginNotAuthorized`), foreign-vault-admin (`ENotVaultAdmin`), pool-identity
   stability across vault replacement, end-to-end receive folding with reward
   claims, a stranger-crank test proving a crank needs no capability,
-  wrong-parent sweep rejection (`EPoolNotDerivedFromParent`), and an explicit
-  empty-sweep abort. The local Move harness does not
-  perform consensus settlement, so it cannot turn `send_funds` into a nonzero
-  `AccumulatorRoot` snapshot; successful nonzero sweeping requires a network
-  integration test.
+  wrong-parent exact-redemption rejection (`EPoolNotDerivedFromParent`), and
+  successful exact accumulator redemption by a permissionless crank. Additional
+  scenarios prove that partial redemptions preserve the accumulator remainder
+  across transactions, revocation disables redemption, and the framework
+  reader's zero `u64` result reaches the exact API's `hikida` guard.
   Fixtures are production-shaped — real `composition::new`, genuine
   fixed-supply currency, stake carved from the real share supply.
 - `sui move build --lint` warning-clean; test-only helpers confined to
