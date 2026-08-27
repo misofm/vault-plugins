@@ -6,5 +6,5 @@ authors = ["Miso Labs, Inc. (build@miso.network)"]
 
 [dependencies]
 miso_party = { git = "https://github.com/misonetwork/party.git", rev = "ffb2915b9bb1802b4c160d3230c560e40bd2b063" }
-vault = { git = "https://github.com/misofm/vault.git", rev = "18e9beb6057108ca97cafc24fed36ab3929bfb99" }
+vault = { git = "https://github.com/misofm/vault.git", rev = "3e04866a21a16c3b2650fa7fec080ed188054bbf" }
 hikida = { git = "https://github.com/unconfirmedlabs/hikida.git", rev = "e88c6fa88348bc2764823cf3666d7ca5e08b2f4f" }

@@ -28,6 +28,16 @@ public struct RECORDING_SHARE_D() has drop;
 public struct COMPOSITION_SHARE() has drop;
 public struct CURRENCY() has drop;
 
+fun new_vault<Cap: key + store>(
+    cap: Cap,
+    ctx: &mut TxContext,
+): (Vault<Cap>, VaultAdminCap<Cap>) {
+    let mut registry = vault::new_registry_for_testing(ctx);
+    let (vault, admin_cap) = vault::new(&mut registry, cap, ctx);
+    destroy(registry);
+    (vault, admin_cap)
+}
+
 /// The fixture is generic over the recording share types so tests needing two
 /// releases never duplicate a share type across recordings — a state that
 /// cannot exist on-chain (one object per share type, enforced by the currency
@@ -54,7 +64,7 @@ fun fixture<RA, RB>(
         track::new_for_testing(composition_id, object::id(&recording_b), release_id, 4000),
     ];
     let (release, release_admin_cap) = release::new_for_testing("Album", tracks, ctx);
-    let (vault, vault_admin_cap) = vault::new(release_admin_cap, ctx);
+    let (vault, vault_admin_cap) = new_vault(release_admin_cap, ctx);
     (
         release,
         vault,
@@ -68,14 +78,16 @@ fun fixture<RA, RB>(
 
 fun destroy_fixture<RA, RB>(
     release: Release,
-    vault: Vault<ReleaseAdminCap>,
+    mut vault: Vault<ReleaseAdminCap>,
     vault_admin_cap: VaultAdminCap<ReleaseAdminCap>,
     recording_a: Recording<RA, COMPOSITION_SHARE>,
     recording_admin_cap_a: RecordingAdminCap<RA>,
     recording_b: Recording<RB, COMPOSITION_SHARE>,
     recording_admin_cap_b: RecordingAdminCap<RB>,
 ) {
-    let release_admin_cap = vault.destroy(vault_admin_cap);
+    let release_admin_cap = vault.withdraw_cap(&vault_admin_cap);
+    destroy(vault_admin_cap);
+    destroy(vault);
     destroy(release);
     destroy(release_admin_cap);
     destroy(recording_a);

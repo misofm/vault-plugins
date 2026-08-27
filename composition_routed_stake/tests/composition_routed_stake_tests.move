@@ -34,6 +34,16 @@ public struct FOREIGN_RECORDING_SHARE() has drop;
 public struct COMPOSITION_SHARE() has drop;
 public struct CURRENCY() has drop;
 
+fun new_vault<Cap: key + store>(
+    cap: Cap,
+    ctx: &mut TxContext,
+): (Vault<Cap>, VaultAdminCap<Cap>) {
+    let mut registry = vault::new_registry_for_testing(ctx);
+    let (vault, admin_cap) = vault::new(&mut registry, cap, ctx);
+    destroy(registry);
+    (vault, admin_cap)
+}
+
 const ADMIN: address = @0xAD;
 const PAYER: address = @0xFA;
 const STRANGER: address = @0x51;
@@ -87,7 +97,7 @@ fun complete_shared_lifecycle_routes_rewards_and_preserves_principal() {
     let recording_admin_cap =
         scenario.take_from_sender<RecordingAdminCap<RECORDING_SHARE>>();
     let composition_holder = scenario.take_from_sender<Stake<COMPOSITION_SHARE>>();
-    let (mut vault, vault_admin_cap) = vault::new(composition_admin_cap, scenario.ctx());
+    let (mut vault, vault_admin_cap) = new_vault(composition_admin_cap, scenario.ctx());
     assert!(!plugin::is_installed(&vault));
     plugin::install_for_testing(&mut vault, &vault_admin_cap);
     assert!(plugin::is_installed(&vault));
@@ -107,7 +117,7 @@ fun complete_shared_lifecycle_routes_rewards_and_preserves_principal() {
     vault.share();
     test_scenario::return_shared(composition);
     test_scenario::return_shared(recording);
-    transfer::public_transfer(vault_admin_cap, ADMIN);
+    vault::transfer_admin_cap(vault_admin_cap, ADMIN);
     scenario.return_to_sender(recording_admin_cap);
     scenario.return_to_sender(composition_holder);
 
@@ -196,7 +206,8 @@ fun complete_shared_lifecycle_routes_rewards_and_preserves_principal() {
     balance::destroy_for_testing(reward);
 
     // --- Tx 7 (ADMIN): redeem the returned principal back into the same
-    // wrapper, then revoke the plugin and destroy the empty Vault. ---
+    // wrapper, then revoke the plugin and withdraw the capability. The permanent
+    // Vault shell remains shared and can be restored later. ---
     scenario.next_tx(ADMIN);
     let mut vault = scenario.take_shared<Vault<CompositionAdminCap<COMPOSITION_SHARE>>>();
     let mut composition = scenario.take_shared<Composition<COMPOSITION_SHARE>>();
@@ -217,10 +228,12 @@ fun complete_shared_lifecycle_routes_rewards_and_preserves_principal() {
     assert_eq!(routed.value(), 200);
     plugin::uninstall_for_testing(&mut vault, &vault_admin_cap);
     assert!(!plugin::is_installed(&vault));
-    let composition_admin_cap = vault.destroy(vault_admin_cap);
+    let composition_admin_cap = vault.withdraw_cap(&vault_admin_cap);
+    test_scenario::return_shared(vault);
     test_scenario::return_shared(composition);
     test_scenario::return_shared(routed);
     destroy(composition_admin_cap);
+    destroy(vault_admin_cap);
     destroy(recording_admin_cap);
     destroy(composition_holder);
     scenario.end();
@@ -245,7 +258,7 @@ fun local_fixture(
         balance::create_for_testing<RECORDING_SHARE>(200),
         ctx,
     );
-    let (vault, vault_admin_cap) = vault::new(composition_admin_cap, ctx);
+    let (vault, vault_admin_cap) = new_vault(composition_admin_cap, ctx);
     (
         composition,
         recording,
@@ -332,7 +345,7 @@ fun lifecycle_rejects_another_vaults_admin_cap() {
 
     let (_other_composition, other_composition_admin_cap) =
         composition::new_for_testing<COMPOSITION_SHARE>("Other", 2_000, ctx);
-    let (_other_vault, other_vault_admin_cap) = vault::new(other_composition_admin_cap, ctx);
+    let (_other_vault, other_vault_admin_cap) = new_vault(other_composition_admin_cap, ctx);
     balance::create_for_testing<RECORDING_SHARE>(1).send_funds(object::id(&composition).to_address());
 
     plugin::create_stake_for_testing(

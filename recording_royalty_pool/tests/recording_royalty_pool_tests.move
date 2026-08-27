@@ -32,6 +32,16 @@ public struct COMPOSITION_SHARE() has drop;
 public struct FOREIGN_RECORDING_SHARE() has drop;
 public struct CURRENCY() has drop;
 
+fun new_vault<Cap: key + store>(
+    cap: Cap,
+    ctx: &mut TxContext,
+): (Vault<Cap>, VaultAdminCap<Cap>) {
+    let mut registry = vault::new_registry_for_testing(ctx);
+    let (vault, admin_cap) = vault::new(&mut registry, cap, ctx);
+    destroy(registry);
+    (vault, admin_cap)
+}
+
 /// Production-shaped fixture: the recording is issued through the real
 /// `recording::new` flow with a genuine fixed-supply share currency, which
 /// also routes the composition cut to the composition address. The
@@ -52,7 +62,7 @@ fun fixture(
     let (mut currency, treasury_cap) = share::bootstrap_currency(ctx);
     let (recording, cap, shares) =
         recording::new(&composition, &mut currency, treasury_cap, ctx);
-    let (vault, vault_admin_cap) = vault::new(cap, ctx);
+    let (vault, vault_admin_cap) = new_vault(cap, ctx);
     destroy(composition_admin_cap);
     (composition, recording, currency, vault, vault_admin_cap, shares)
 }
@@ -61,11 +71,13 @@ fun destroy_fixture(
     composition: Composition<COMPOSITION_SHARE>,
     recording: Recording<Share, COMPOSITION_SHARE>,
     currency: Currency<Share>,
-    vault: Vault<RecordingAdminCap<Share>>,
+    mut vault: Vault<RecordingAdminCap<Share>>,
     vault_admin_cap: VaultAdminCap<RecordingAdminCap<Share>>,
     shares: balance::Balance<Share>,
 ) {
-    let cap = vault.destroy(vault_admin_cap);
+    let cap = vault.withdraw_cap(&vault_admin_cap);
+    destroy(vault_admin_cap);
+    destroy(vault);
     destroy(composition);
     destroy(recording);
     destroy(currency);
@@ -101,7 +113,7 @@ fun pool_cannot_be_initialized_before_installation() {
 }
 
 #[test]
-fun pool_parent_is_recording_and_survives_vault_replacement() {
+fun pool_parent_is_recording_and_survives_vault_withdraw_restore() {
     // Currency bootstrap requires the system sender.
     let mut scenario = test_scenario::begin(@0x0);
     let (composition, mut recording, currency, mut vault, vault_admin_cap, shares) =
@@ -124,13 +136,13 @@ fun pool_parent_is_recording_and_survives_vault_replacement() {
     test_scenario::return_shared(pool);
 
     plugin::uninstall_for_testing(&mut vault, &vault_admin_cap);
-    let cap = vault.destroy(vault_admin_cap);
-    let (replacement_vault, replacement_admin_cap) = vault::new(cap, scenario.ctx());
+    let cap = vault.withdraw_cap(&vault_admin_cap);
+    vault.restore_cap(&vault_admin_cap, cap, scenario.ctx());
     assert_eq!(
         plugin::pool_address<Share, COMPOSITION_SHARE, CURRENCY>(&recording),
         pool_address,
     );
-    destroy_fixture(composition, recording, currency, replacement_vault, replacement_admin_cap, shares);
+    destroy_fixture(composition, recording, currency, vault, vault_admin_cap, shares);
     scenario.end();
 }
 
@@ -229,8 +241,8 @@ fun foreign_vault_admin_cannot_initialize_pool() {
         object::id_from_address(@0xC0),
         ctx,
     );
-    let (mut vault_a, vault_admin_cap_a) = vault::new(cap_a, ctx);
-    let (_vault_b, vault_admin_cap_b) = vault::new(cap_b, ctx);
+    let (mut vault_a, vault_admin_cap_a) = new_vault(cap_a, ctx);
+    let (_vault_b, vault_admin_cap_b) = new_vault(cap_b, ctx);
     plugin::install_for_testing(&mut vault_a, &vault_admin_cap_a);
 
     plugin::initialize_pool_for_testing<Share, COMPOSITION_SHARE, CURRENCY>(

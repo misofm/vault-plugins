@@ -32,6 +32,16 @@ public struct StakeLike has key, store {
     amount: u64,
 }
 
+fun new_vault<Cap: key + store>(
+    cap: Cap,
+    ctx: &mut TxContext,
+): (Vault<Cap>, VaultAdminCap<Cap>) {
+    let mut registry = vault::new_registry_for_testing(ctx);
+    let (vault, admin_cap) = vault::new(&mut registry, cap, ctx);
+    destroy(registry);
+    (vault, admin_cap)
+}
+
 fun new_party(group: bool, ctx: &mut TxContext): (Party, PartyAdminCap) {
     let clock = sui::clock::create_for_testing(ctx);
     let kind = if (group) party::new_group_kind() else party::new_individual_kind();
@@ -44,10 +54,10 @@ fun new_vaulted_party(scenario: &mut ts::Scenario, group: bool, install: bool): 
     let (party, party_admin_cap) = new_party(group, scenario.ctx());
     let party_id = object::id(&party);
     party.share(&party_admin_cap);
-    let (mut vault, vault_admin_cap) = vault::new(party_admin_cap, scenario.ctx());
+    let (mut vault, vault_admin_cap) = new_vault(party_admin_cap, scenario.ctx());
     if (install) plugin::install_for_testing(&mut vault, &vault_admin_cap);
     vault.share();
-    transfer::public_transfer(vault_admin_cap, ADMIN);
+    vault::transfer_admin_cap(vault_admin_cap, ADMIN);
     party_id
 }
 
@@ -55,7 +65,7 @@ fun local_fixture(
     ctx: &mut TxContext,
 ): (Party, Vault<PartyAdminCap>, VaultAdminCap<PartyAdminCap>) {
     let (party, party_admin_cap) = new_party(false, ctx);
-    let (vault, vault_admin_cap) = vault::new(party_admin_cap, ctx);
+    let (vault, vault_admin_cap) = new_vault(party_admin_cap, ctx);
     (party, vault, vault_admin_cap)
 }
 
@@ -86,7 +96,10 @@ fun installation_is_explicit_and_revocable() {
     plugin::uninstall_for_testing(&mut vault, &vault_admin_cap);
     assert!(!plugin::is_installed(&vault));
 
-    destroy(vault.destroy(vault_admin_cap));
+    let party_admin_cap = vault.withdraw_cap(&vault_admin_cap);
+    destroy(vault_admin_cap);
+    destroy(vault);
+    destroy(party_admin_cap);
     destroy(party);
 }
 
