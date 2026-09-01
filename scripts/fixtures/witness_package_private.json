@@ -1,0 +1,28 @@
+{
+  "structs": {
+    "Witness": {
+      "abilities": ["Drop"],
+      "type_parameters": []
+    }
+  },
+  "functions": {
+    "new": {
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "fixture_package_private",
+              "name": "witness"
+            },
+            "name": "Witness",
+            "type_arguments": []
+          }
+        }
+      ]
+    }
+  }
+}

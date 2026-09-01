@@ -1,88 +1,98 @@
 # Miso Vault Plugins
 
-First-party business-logic packages for Miso objects, authorized by
-[`misofm/vault`](https://github.com/misofm/vault).
+Thin, first-party adapters that let a Miso capability held by
+[`misofm/vault`](https://github.com/misofm/vault) execute a matching Miso
+Action.
 
-Extensions attach declarative data to a host object. Vault plugins temporarily
-exercise a custodied admin capability to perform a bounded workflow on a
-`Party`, `Composition`, `Recording`, or `Release`. Each directory in this
-repository is an independently versioned and published Move package.
+## Extensions, Actions, and plugins
 
-## Packages
+- **Extensions** attach declarative state to a protocol object. They do not
+  define an operational custody path.
+- **Actions** own domain workflows. They are public, composable raw-cap
+  functions and contain all validation, arithmetic, transfers, events, and
+  derivation logic.
+- **Vault plugins** only adapt Vault custody to Actions. An administrator
+  installs or uninstalls a package-local witness. Each operation then borrows
+  the exact raw cap, calls one matching Action, and immediately puts the cap
+  back.
 
-| Package | Target | Purpose |
-|---------|--------|---------|
-| [`composition_royalty_pool`](./composition_royalty_pool) | Composition | Creates the canonical Composition-derived royalty pool and folds Composition-addressed funds into it. |
-| [`recording_royalty_pool`](./recording_royalty_pool) | Recording | Creates the canonical Recording-derived royalty pool and folds Recording-addressed funds into it. |
-| [`release_revenue_distributor`](./release_revenue_distributor) | Release | Receives or redeems Release-addressed revenue and distributes it to the Recording addresses and splits fixed by the tracklist. |
-| [`composition_routed_stake`](./composition_routed_stake) | Composition | Manages Composition-owned Recording shares in a derived `RoutedStake`, with principal and rewards constrained to Composition-controlled destinations. |
-| [`party_wallet`](./party_wallet) | Party | Admin-gated receipt of Party-addressed objects plus composable Balance returns from coin and accumulator withdrawals. |
+There is no Party plugin. Party wallet behavior is an Action. There is also no
+Composition routed-stake plugin: its lifecycle is a governance Action, while
+the routed-stake core already exposes permissionless sweeping.
 
-See each package README for its complete authority and funds-flow declaration.
+## Retained packages
 
-## Trust model
+| Package | Permissionless operations after install |
+|---|---|
+| [`composition_royalty_pool_plugin`](./composition_royalty_pool_plugin) | Receive or redeem Composition revenue into its canonical royalty pool. |
+| [`recording_royalty_pool_plugin`](./recording_royalty_pool_plugin) | Receive or redeem Recording revenue into its canonical royalty pool. |
+| [`release_revenue_distributor_plugin`](./release_revenue_distributor_plugin) | Receive Release coins or redeem the full canonical settled snapshot and distribute it through the immutable tracklist. |
 
-Every plugin contains the canonical type `0xpkg::witness::Witness`:
+Pool creation is deliberately not a plugin API. Administrators call the
+corresponding Action directly with the raw cap (including a cap borrowed via
+`Vault::borrow_as_admin`).
 
-```move
-module example_plugin::witness;
+## Entry-point caveat
 
-public struct Witness() has drop;
+Operational functions are private `entry fun`s. A transaction can invoke
+them as top-level commands, but other Move modules cannot call them and they
+cannot be composed as public Move functions. They intentionally return `()`
+and accept no `VaultAdminCap`, sender, recipient, destination, address, or
+`TxContext`. Test-only public wrappers exist solely because external Move test
+modules cannot invoke private entry functions.
 
-public(package) fun new(): Witness {
-    Witness()
-}
-```
+Install, uninstall, and `is_installed` remain public composable functions.
+Installation controls whether the package witness may lease the raw cap; it
+does not authorize the transaction sender. Anyone can crank an installed
+operation, and the Action fixes the target and funds flow.
 
-The package-only constructor allows plugin modules to borrow through Vault
-without allowing downstream packages to fabricate the witness. A Vault
-authorization identifies the witness's defining package lineage; it does not
-pin one bytecode version. Clients must evaluate the package's source, published
-bytecode, upgrade authority, dependencies, and witness shape before installation.
-See [SCORING.md](./SCORING.md) for the offchain acceptance model.
+The Release redemption crank accepts the canonical `AccumulatorRoot`, never a
+caller-selected amount. It snapshots and redeems all funds settled for the
+Release at the start of the consensus commit. A zero snapshot is an idempotent
+no-op; excess beyond the framework's `u64` snapshot and later funds remain for
+a subsequent crank. This prevents permissionless callers from fragmenting a
+settlement into dust-sized distributions.
 
-Authority-bearing production operations are composable `public fun`s, allowing
-installation and setup against Vaults created earlier in the same PTB. Authority
-still comes from the matching `VaultAdminCap` and package witness, and every
-capability lease is returned before the operation completes.
+## Dependency pinning
 
-## Installation
+Every immutable dependency is pinned to an exact Git commit. Action dependencies
+use the matching `protocol-actions` package subdirectory so one package identity
+is resolved throughout each build. A fresh plugin package identity must not reuse
+a copied `Published.toml`.
 
-Installation is implemented by the plugin package so it can construct its own
-witness:
+## Verification
 
-```move
-public fun install<CompositionShare>(
-    vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
-    vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
-) {
-    vault.authorize_plugin(vault_admin_cap, witness::new())
-}
-```
-
-The matching Vault administrator can revoke the plugin at any time.
-
-## Development
-
-Run commands from the package directory:
+Run the compiler-backed ABI and bytecode gate from the repository root:
 
 ```sh
-cd composition_royalty_pool
-sui move build
-sui move test --coverage
+./scripts/check_plugin_abi.py --self-test
+./scripts/check_plugin_abi.py
+```
+
+The gate force-compiles disassembly with warnings and lints as errors. It
+checks exact function schemas and call sequences, witness opacity, dependency
+Git revisions and resolved package identities, and rejects ambiguous summaries,
+unparsed instructions, operational authority/address parameters, or any
+executor call graph other than
+`witness::new -> borrow_as_plugin -> matching Action -> put_back`.
+
+For an unpublished dependency such as the fresh Vault, the compiler assigns a
+deterministic symbolic build address. The Git-source allowlist and absence of
+publication metadata establish that it is unpublished; the retired Vault
+original ID is not accepted as current.
+
+Each package is independently buildable and testable:
+
+```sh
+cd composition_royalty_pool_plugin
+sui move build --build-env testnet
+sui move test --build-env testnet --coverage
 sui move coverage summary
 ```
 
-Every plugin includes a multi-transaction `sui::test_scenario` flow plus
-focused authorization and destination-integrity tests. Dependency revisions and
-resolved package identities are committed in `Move.toml` and `Move.lock`.
-
-`test_scenario` does not advance consensus settlement into a funded
-`AccumulatorRoot`. The suites type-check a framework-derived zero `u64` through
-the exact redemption APIs and exercise positive exact redemptions directly.
-After fresh publication, the positive
-`settled_funds_value -> redeem` command-result chain remains a required network
-integration check.
+Positive receive paths use transferred `Coin` tickets in the Move VM. A
+separate test pins the zero settled-accumulator boundary; positive consensus
+settlement remains a network integration check.
 
 ## License
 

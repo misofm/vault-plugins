@@ -3,4 +3,5 @@
 **/package_summaries/
 **/.trace
 **/traces/
+**/__pycache__/
 .DS_Store

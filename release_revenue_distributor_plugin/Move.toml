@@ -1,0 +1,15 @@
+[package]
+name = "release_revenue_distributor_plugin"
+edition = "2024"
+license = "Apache 2.0"
+authors = ["Miso Labs, Inc. (build@miso.network)"]
+
+[dependencies]
+release_revenue_distributor = { git = "https://github.com/misonetwork/protocol-actions.git", subdir = "release_revenue_distributor", rev = "439096790e41293a4d74df32334590e943dd3f88" }
+vault = { git = "https://github.com/misofm/vault.git", rev = "a171b3ad5a69868da857a361cbfb3503ff64e780" }
+miso = { git = "https://github.com/misonetwork/protocol.git", rev = "6de5f9881ee62c81c57ce16832efc24dc33ae429" }
+composition_royalty_pool = { git = "https://github.com/misonetwork/protocol-actions.git", subdir = "composition_royalty_pool", rev = "439096790e41293a4d74df32334590e943dd3f88", modes = ["test"] }
+composition_routed_stake = { git = "https://github.com/misonetwork/protocol-actions.git", subdir = "composition_routed_stake", rev = "439096790e41293a4d74df32334590e943dd3f88", modes = ["test"] }
+recording_royalty_pool = { git = "https://github.com/misonetwork/protocol-actions.git", subdir = "recording_royalty_pool", rev = "439096790e41293a4d74df32334590e943dd3f88", modes = ["test"] }
+royalty_pool = { git = "https://github.com/misonetwork/royalty-pool.git", rev = "2a55f9d8d47c8011ada5c74d181c807167d78da3", modes = ["test"] }
+routed_stake = { git = "https://github.com/misonetwork/routed-stake.git", rev = "b469541340109c38c12ef0fb5cb46b033c9282c7", modes = ["test"] }

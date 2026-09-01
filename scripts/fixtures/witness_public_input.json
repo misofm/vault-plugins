@@ -1,0 +1,14 @@
+{
+  "structs": {"Witness": {"abilities": ["Drop"], "type_parameters": []}},
+  "functions": {
+    "new": {
+      "visibility": "Package", "entry": false, "type_parameters": [], "parameters": [],
+      "return_": [{"Datatype": {"module": {"address": "fixture", "name": "witness"}, "name": "Witness", "type_arguments": []}}]
+    },
+    "consume": {
+      "visibility": "Public", "entry": false, "type_parameters": [],
+      "parameters": [{"name": "witness", "type_": {"Datatype": {"module": {"address": "fixture", "name": "witness"}, "name": "Witness", "type_arguments": []}}}],
+      "return_": []
+    }
+  }
+}

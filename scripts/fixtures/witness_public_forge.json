@@ -1,0 +1,46 @@
+{
+  "structs": {
+    "Witness": {
+      "abilities": ["Drop"],
+      "type_parameters": []
+    }
+  },
+  "functions": {
+    "new": {
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "fixture_public_forge",
+              "name": "witness"
+            },
+            "name": "Witness",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "forge": {
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "fixture_public_forge",
+              "name": "witness"
+            },
+            "name": "Witness",
+            "type_arguments": []
+          }
+        }
+      ]
+    }
+  }
+}
