@@ -31,10 +31,10 @@ SOURCES = {
     "Sui": git("https://github.com/MystenLabs/sui.git", "2a0becb2fcc6989e492981104af67f62f2c9511a", "crates/sui-framework/packages/sui-framework"),
     "bps": git("https://github.com/unconfirmedlabs/bps.git", "4ca1972a67d35c972ca567de7b08315e3778e52b"),
     "hikida": git("https://github.com/unconfirmedlabs/hikida.git", "4abe4c1ff482655693698fa6ab8a6e2b58f8c635"),
-    "miso": git("https://github.com/misonetwork/protocol.git", "6de5f9881ee62c81c57ce16832efc24dc33ae429"),
-    "miso_share": git("https://github.com/misonetwork/share.git", "561cfad98e4aaa63e6b34d5a6f4c22e397c70a52"),
-    "royalty_pool": git("https://github.com/misonetwork/royalty-pool.git", "2a55f9d8d47c8011ada5c74d181c807167d78da3"),
-    "routed_stake": git("https://github.com/misonetwork/routed-stake.git", "b469541340109c38c12ef0fb5cb46b033c9282c7"),
+    "miso": git("https://github.com/misofm/protocol.git", "6de5f9881ee62c81c57ce16832efc24dc33ae429"),
+    "miso_share": git("https://github.com/misofm/share.git", "561cfad98e4aaa63e6b34d5a6f4c22e397c70a52"),
+    "royalty_pool": git("https://github.com/misofm/royalty-pool.git", "2a55f9d8d47c8011ada5c74d181c807167d78da3"),
+    "routed_stake": git("https://github.com/misofm/routed-stake.git", "b469541340109c38c12ef0fb5cb46b033c9282c7"),
     "vault": git("https://github.com/misofm/vault.git", "a171b3ad5a69868da857a361cbfb3503ff64e780"),
 }
 for _action in (
@@ -42,7 +42,7 @@ for _action in (
     "release_revenue_distributor", "composition_routed_stake",
 ):
     SOURCES[_action] = git(
-        "https://github.com/misonetwork/protocol-actions.git", ACTION_REV, _action
+        "https://github.com/misofm/protocol-actions.git", ACTION_REV, _action
     )
 
 
