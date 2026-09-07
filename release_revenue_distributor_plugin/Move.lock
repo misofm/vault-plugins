@@ -4,6 +4,90 @@
 [move]
 version = 4
 
+[pinned.mainnet.MoveStdlib]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "2a0becb2fcc6989e492981104af67f62f2c9511a" }
+use_environment = "mainnet"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
+[pinned.mainnet.Sui]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "2a0becb2fcc6989e492981104af67f62f2c9511a" }
+use_environment = "mainnet"
+manifest_digest = "CD547CB1ACCE0880C835DAED2D8FFCB91D56C833AE5240D3AA5B918398263195"
+deps = { MoveStdlib = "MoveStdlib" }
+
+[pinned.mainnet.bps]
+source = { git = "https://github.com/unconfirmedlabs/bps.git", subdir = ".", rev = "4ca1972a67d35c972ca567de7b08315e3778e52b" }
+use_environment = "mainnet"
+manifest_digest = "E41BBD67BE8940D26C79D78B028477EF5B33BA217A1282C78ACB344CF8A5ECF6"
+deps = { std = "MoveStdlib", sui = "Sui" }
+
+[pinned.mainnet.composition_routed_stake]
+source = { git = "https://github.com/misofm/protocol-actions.git", subdir = "composition_routed_stake", rev = "56cb0b71d7fa1b2221e02216f8437ae2ede5ceff" }
+use_environment = "mainnet"
+manifest_digest = "F62571DBE983C79F58525D8102661925F1A05858FE0A83B86BE3F1EDCBFC1ADC"
+deps = { hikida = "hikida", miso = "miso", routed_stake = "routed_stake", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
+
+[pinned.mainnet.composition_royalty_pool]
+source = { git = "https://github.com/misofm/protocol-actions.git", subdir = "composition_royalty_pool", rev = "56cb0b71d7fa1b2221e02216f8437ae2ede5ceff" }
+use_environment = "mainnet"
+manifest_digest = "094B27B626A7854E31ABE69C10B54CD4D139C9DC0E54A799926475315D0BC440"
+deps = { hikida = "hikida", miso = "miso", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
+
+[pinned.mainnet.hikida]
+source = { git = "https://github.com/unconfirmedlabs/hikida.git", subdir = ".", rev = "4abe4c1ff482655693698fa6ab8a6e2b58f8c635" }
+use_environment = "mainnet"
+manifest_digest = "E41BBD67BE8940D26C79D78B028477EF5B33BA217A1282C78ACB344CF8A5ECF6"
+deps = { std = "MoveStdlib", sui = "Sui" }
+
+[pinned.mainnet.miso]
+source = { git = "https://github.com/misofm/protocol.git", subdir = ".", rev = "ffa0e38b8ba4815d81de1076101ea37d2c71c623" }
+use_environment = "mainnet"
+manifest_digest = "F1538B296F5BE05AEE0D9AFAF8855CA7B7FA20480A631D23395D2C5F7D636B48"
+deps = { bps = "bps", miso_share = "miso_share", std = "MoveStdlib", sui = "Sui" }
+
+[pinned.mainnet.miso_share]
+source = { git = "https://github.com/misofm/share.git", subdir = ".", rev = "36dcbf2db710c9544c80427e128324733b6f6044" }
+use_environment = "mainnet"
+manifest_digest = "E41BBD67BE8940D26C79D78B028477EF5B33BA217A1282C78ACB344CF8A5ECF6"
+deps = { std = "MoveStdlib", sui = "Sui" }
+
+[pinned.mainnet.recording_royalty_pool]
+source = { git = "https://github.com/misofm/protocol-actions.git", subdir = "recording_royalty_pool", rev = "56cb0b71d7fa1b2221e02216f8437ae2ede5ceff" }
+use_environment = "mainnet"
+manifest_digest = "094B27B626A7854E31ABE69C10B54CD4D139C9DC0E54A799926475315D0BC440"
+deps = { hikida = "hikida", miso = "miso", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
+
+[pinned.mainnet.release_revenue_distributor]
+source = { git = "https://github.com/misofm/protocol-actions.git", subdir = "release_revenue_distributor", rev = "56cb0b71d7fa1b2221e02216f8437ae2ede5ceff" }
+use_environment = "mainnet"
+manifest_digest = "8AE58237CBC308ED749465A41C38114F8E87C24FD706605F7A883D8D63336FA6"
+deps = { hikida = "hikida", miso = "miso", std = "MoveStdlib", sui = "Sui", vault = "vault" }
+
+[pinned.mainnet.release_revenue_distributor_plugin]
+source = { root = true }
+use_environment = "mainnet"
+manifest_digest = "0B8418F72CE20A442E3DDB9850784D9DCD7483E7BD5E266C1E5E41DAC3BF809C"
+deps = { composition_routed_stake = "composition_routed_stake", composition_royalty_pool = "composition_royalty_pool", miso = "miso", recording_royalty_pool = "recording_royalty_pool", release_revenue_distributor = "release_revenue_distributor", routed_stake = "routed_stake", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
+
+[pinned.mainnet.routed_stake]
+source = { git = "https://github.com/misofm/routed-stake.git", subdir = ".", rev = "1bbf499263371bf0f6e62594b1ac7428f79cfc39" }
+use_environment = "mainnet"
+manifest_digest = "4B5FFFB95DC0513F9F88258C32B2BA6ABA0BCDD81E4BE4F6251B7BF29903BC5F"
+deps = { royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui" }
+
+[pinned.mainnet.royalty_pool]
+source = { git = "https://github.com/misofm/royalty-pool.git", subdir = ".", rev = "0b40a6f5d37c595d29acd7f6ebbee0a11177482f" }
+use_environment = "mainnet"
+manifest_digest = "6780F8DE8DBCA703D8BFC77E9B0D126C3E9CDE8B71EA0AC3CA09E54EC4CB5470"
+deps = { hikida = "hikida", std = "MoveStdlib", sui = "Sui" }
+
+[pinned.mainnet.vault]
+source = { git = "https://github.com/misofm/vault.git", subdir = ".", rev = "6b55f9fe8d89f7a7974cb843b10b9827fe13ef0f" }
+use_environment = "mainnet"
+manifest_digest = "E41BBD67BE8940D26C79D78B028477EF5B33BA217A1282C78ACB344CF8A5ECF6"
+deps = { std = "MoveStdlib", sui = "Sui" }
+
 [pinned.testnet.MoveStdlib]
 source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "2a0becb2fcc6989e492981104af67f62f2c9511a" }
 use_environment = "testnet"
