@@ -28,38 +28,38 @@ use_environment = "mainnet"
 manifest_digest = "E41BBD67BE8940D26C79D78B028477EF5B33BA217A1282C78ACB344CF8A5ECF6"
 deps = { std = "MoveStdlib", sui = "Sui" }
 
-[pinned.mainnet.miso]
-source = { git = "https://github.com/misofm/protocol.git", subdir = ".", rev = "ffa0e38b8ba4815d81de1076101ea37d2c71c623" }
-use_environment = "mainnet"
-manifest_digest = "F1538B296F5BE05AEE0D9AFAF8855CA7B7FA20480A631D23395D2C5F7D636B48"
-deps = { bps = "bps", miso_share = "miso_share", std = "MoveStdlib", sui = "Sui" }
-
 [pinned.mainnet.miso_share]
-source = { git = "https://github.com/misofm/share.git", subdir = ".", rev = "36dcbf2db710c9544c80427e128324733b6f6044" }
+source = { git = "https://github.com/misofm/share.git", subdir = ".", rev = "4999b7d639131fbd5b416b14ca798c28c0a6107d" }
 use_environment = "mainnet"
 manifest_digest = "E41BBD67BE8940D26C79D78B028477EF5B33BA217A1282C78ACB344CF8A5ECF6"
 deps = { std = "MoveStdlib", sui = "Sui" }
 
-[pinned.mainnet.recording_royalty_pool]
-source = { git = "https://github.com/misofm/protocol-actions.git", subdir = "recording_royalty_pool", rev = "56cb0b71d7fa1b2221e02216f8437ae2ede5ceff" }
+[pinned.mainnet.musicos]
+source = { git = "https://github.com/misofm/musicos.git", subdir = ".", rev = "4fed48b2b5632122fb677d742881259c65b1bc78" }
 use_environment = "mainnet"
-manifest_digest = "094B27B626A7854E31ABE69C10B54CD4D139C9DC0E54A799926475315D0BC440"
-deps = { hikida = "hikida", miso = "miso", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
+manifest_digest = "3D6EC55F69996D148A47B5A8FC019706FADD1577DE47748EF1E6CED1DC48B90B"
+deps = { bps = "bps", miso_share = "miso_share", std = "MoveStdlib", sui = "Sui" }
+
+[pinned.mainnet.recording_royalty_pool]
+source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "recording_royalty_pool", rev = "ee565afe75e2893bded650ade5c00a9271ad93a6" }
+use_environment = "mainnet"
+manifest_digest = "A570B243B016CF7D80FEBFB33975A357B31EE8ABF3F2106F722CB210F27DD1E9"
+deps = { hikida = "hikida", musicos = "musicos", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.mainnet.recording_royalty_pool_plugin]
 source = { root = true }
 use_environment = "mainnet"
-manifest_digest = "6A08D36027296B8F7B6756B6FFC114917272E897788DA822CD207001CBEDED63"
-deps = { miso = "miso", recording_royalty_pool = "recording_royalty_pool", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
+manifest_digest = "1C936FF534F4BE3270CF40B028E2A82394CB6638DBA857C03EC2C0D4DE429A02"
+deps = { musicos = "musicos", recording_royalty_pool = "recording_royalty_pool", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.mainnet.royalty_pool]
-source = { git = "https://github.com/misofm/royalty-pool.git", subdir = ".", rev = "0b40a6f5d37c595d29acd7f6ebbee0a11177482f" }
+source = { git = "https://github.com/misofm/royalty-pool.git", subdir = ".", rev = "de389b508708fb5c7a14ed3548e871626c844bdc" }
 use_environment = "mainnet"
 manifest_digest = "6780F8DE8DBCA703D8BFC77E9B0D126C3E9CDE8B71EA0AC3CA09E54EC4CB5470"
 deps = { hikida = "hikida", std = "MoveStdlib", sui = "Sui" }
 
 [pinned.mainnet.vault]
-source = { git = "https://github.com/misofm/vault.git", subdir = ".", rev = "6b55f9fe8d89f7a7974cb843b10b9827fe13ef0f" }
+source = { git = "https://github.com/misofm/vault.git", subdir = ".", rev = "8a4d1c0edbc120efc642a682308662e2a0b7f407" }
 use_environment = "mainnet"
 manifest_digest = "E41BBD67BE8940D26C79D78B028477EF5B33BA217A1282C78ACB344CF8A5ECF6"
 deps = { std = "MoveStdlib", sui = "Sui" }
@@ -88,29 +88,29 @@ use_environment = "testnet"
 manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332A87"
 deps = { std = "MoveStdlib", sui = "Sui" }
 
-[pinned.testnet.miso]
-source = { git = "https://github.com/misofm/protocol.git", subdir = ".", rev = "09f0dc699a112c37d8da8a765596cc1ed623fe79" }
-use_environment = "testnet"
-manifest_digest = "8ABEF6728361420B2EDD62D2E4292AEE53C7FB6EE6DD6953C4CB77A522CA8AA7"
-deps = { bps = "bps", miso_share = "miso_share", std = "MoveStdlib", sui = "Sui" }
-
 [pinned.testnet.miso_share]
 source = { git = "https://github.com/misofm/share.git", subdir = ".", rev = "4999b7d639131fbd5b416b14ca798c28c0a6107d" }
 use_environment = "testnet"
 manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332A87"
 deps = { std = "MoveStdlib", sui = "Sui" }
 
-[pinned.testnet.recording_royalty_pool]
-source = { git = "https://github.com/misofm/protocol-actions.git", subdir = "recording_royalty_pool", rev = "874d8b5933b03d826021e76401fbdf71743165fe" }
+[pinned.testnet.musicos]
+source = { git = "https://github.com/misofm/musicos.git", subdir = ".", rev = "4fed48b2b5632122fb677d742881259c65b1bc78" }
 use_environment = "testnet"
-manifest_digest = "2F4FCC0A2FF2A0355D5AACC74064785044F6C7E94C4D0B2372B105B2F547F347"
-deps = { hikida = "hikida", miso = "miso", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
+manifest_digest = "8ABEF6728361420B2EDD62D2E4292AEE53C7FB6EE6DD6953C4CB77A522CA8AA7"
+deps = { bps = "bps", miso_share = "miso_share", std = "MoveStdlib", sui = "Sui" }
+
+[pinned.testnet.recording_royalty_pool]
+source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "recording_royalty_pool", rev = "ee565afe75e2893bded650ade5c00a9271ad93a6" }
+use_environment = "testnet"
+manifest_digest = "163FADA598C67F1AC83058561AB442ECE1ADBFEB9588840826AF37B87D6AF9C7"
+deps = { hikida = "hikida", musicos = "musicos", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.testnet.recording_royalty_pool_plugin]
 source = { root = true }
 use_environment = "testnet"
-manifest_digest = "7CCBE9E3AE15D0C543FC5A765B02731010A83981E789790E0D2C2C838E5413CF"
-deps = { miso = "miso", recording_royalty_pool = "recording_royalty_pool", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
+manifest_digest = "C5E9F5F07E424A92947CF9387E8FEDDDE15320BD391D6324E604044F54C6A0BD"
+deps = { musicos = "musicos", recording_royalty_pool = "recording_royalty_pool", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.testnet.royalty_pool]
 source = { git = "https://github.com/misofm/royalty-pool.git", subdir = ".", rev = "de389b508708fb5c7a14ed3548e871626c844bdc" }

@@ -20,5 +20,5 @@ Operational entries return `()` and accept no Vault admin cap, address,
 recipient, destination, sender, or transaction context. Test-only public
 wrappers exist solely for external Move tests.
 
-The Action dependency is pinned to its `protocol-actions` Git subdirectory and
+The Action dependency is pinned to its `musicos-actions` Git subdirectory and
 exact immutable revision.

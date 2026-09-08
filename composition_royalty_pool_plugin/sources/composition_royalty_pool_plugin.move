@@ -6,7 +6,7 @@ module composition_royalty_pool_plugin::composition_royalty_pool_plugin;
 
 use composition_royalty_pool::composition_royalty_pool as action;
 use composition_royalty_pool_plugin::witness::{Self, Witness};
-use miso::composition::{Composition, CompositionAdminCap};
+use musicos::composition::{Composition, CompositionAdminCap};
 use royalty_pool::pool::RoyaltyPool;
 use sui::coin::Coin;
 use sui::transfer::Receiving;

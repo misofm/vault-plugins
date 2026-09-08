@@ -4,7 +4,7 @@
 /// Vault adapter for Recording royalty-pool Actions.
 module recording_royalty_pool_plugin::recording_royalty_pool_plugin;
 
-use miso::recording::{Recording, RecordingAdminCap};
+use musicos::recording::{Recording, RecordingAdminCap};
 use recording_royalty_pool::recording_royalty_pool as action;
 use recording_royalty_pool_plugin::witness::{Self, Witness};
 use royalty_pool::pool::RoyaltyPool;

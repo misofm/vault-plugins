@@ -4,9 +4,9 @@
 #[test_only]
 module release_revenue_distributor_plugin::release_revenue_distributor_plugin_tests;
 
-use miso::release::{Self, Release, ReleaseAdminCap};
-use miso::test_helpers;
-use miso::track;
+use musicos::release::{Self, Release, ReleaseAdminCap};
+use musicos::test_helpers;
+use musicos::track;
 use release_revenue_distributor::release_revenue_distributor as action;
 use release_revenue_distributor_plugin::release_revenue_distributor_plugin as plugin;
 use std::unit_test::{assert_eq, destroy};

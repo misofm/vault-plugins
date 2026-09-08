@@ -4,8 +4,8 @@
 #[test_only]
 module recording_royalty_pool_plugin::recording_royalty_pool_plugin_tests;
 
-use miso::recording::{Self, Recording, RecordingAdminCap};
-use miso::test_helpers;
+use musicos::recording::{Self, Recording, RecordingAdminCap};
+use musicos::test_helpers;
 use recording_royalty_pool::recording_royalty_pool as action;
 use recording_royalty_pool_plugin::recording_royalty_pool_plugin as plugin;
 use royalty_pool::pool::{Self, RoyaltyPool};

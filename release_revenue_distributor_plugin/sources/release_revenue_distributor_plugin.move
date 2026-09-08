@@ -4,7 +4,7 @@
 /// Vault adapter for Release revenue-distribution Actions.
 module release_revenue_distributor_plugin::release_revenue_distributor_plugin;
 
-use miso::release::{Release, ReleaseAdminCap};
+use musicos::release::{Release, ReleaseAdminCap};
 use release_revenue_distributor::release_revenue_distributor as action;
 use release_revenue_distributor_plugin::witness::{Self, Witness};
 use sui::accumulator::AccumulatorRoot;

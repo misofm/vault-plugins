@@ -56,7 +56,7 @@ settlement into dust-sized distributions.
 ## Dependency pinning
 
 Every immutable dependency is pinned to an exact Git commit. Action dependencies
-use the matching `protocol-actions` package subdirectory so one package identity
+use the matching `musicos-actions` package subdirectory so one package identity
 is resolved throughout each build. A fresh plugin package identity must not reuse
 a copied `Published.toml`.
 

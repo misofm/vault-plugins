@@ -6,11 +6,11 @@ module release_revenue_distributor_plugin::e2e_pipeline_tests;
 
 use composition_royalty_pool::composition_royalty_pool as composition_pool_action;
 use composition_routed_stake::composition_routed_stake as routed_action;
-use miso::composition;
-use miso::recording;
-use miso::release;
-use miso::test_helpers;
-use miso::track;
+use musicos::composition;
+use musicos::recording;
+use musicos::release;
+use musicos::test_helpers;
+use musicos::track;
 use recording_royalty_pool::recording_royalty_pool as recording_pool_action;
 use release_revenue_distributor_plugin::release_revenue_distributor_plugin as release_plugin;
 use royalty_pool::pool;
