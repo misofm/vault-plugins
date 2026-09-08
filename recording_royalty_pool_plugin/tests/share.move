@@ -1,7 +1,7 @@
 // Copyright (c) Miso Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-/// Test-only share type satisfying the `miso_share` issuance gates
+/// Test-only share type satisfying the `share` issuance gates
 /// (`<pkg>::share::Share`), so fixtures can issue recordings through the
 /// production `recording::new` path with a real fixed-supply currency.
 /// `coin_registry::new_currency` is internal-gated, so the type and the

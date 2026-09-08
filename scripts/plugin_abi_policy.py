@@ -15,7 +15,7 @@ from typing import Any, Callable
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "scripts" / "fixtures"
-ACTION_REV = "ee565afe75e2893bded650ade5c00a9271ad93a6"
+ACTION_REV = "1e5a67d5bbe093beef1d4749d7d39f9c7d454a53"
 
 
 def fail(message: str) -> None:
@@ -31,8 +31,8 @@ SOURCES = {
     "Sui": git("https://github.com/MystenLabs/sui.git", "2a0becb2fcc6989e492981104af67f62f2c9511a", "crates/sui-framework/packages/sui-framework"),
     "bps": git("https://github.com/unconfirmedlabs/bps.git", "4ca1972a67d35c972ca567de7b08315e3778e52b"),
     "hikida": git("https://github.com/unconfirmedlabs/hikida.git", "4abe4c1ff482655693698fa6ab8a6e2b58f8c635"),
-    "musicos": git("https://github.com/misofm/musicos.git", "4fed48b2b5632122fb677d742881259c65b1bc78"),
-    "miso_share": git("https://github.com/misofm/share.git", "4999b7d639131fbd5b416b14ca798c28c0a6107d"),
+    "musicos": git("https://github.com/misofm/musicos.git", "b3d5d4005fe36044d90e318f864dbc8b01de41da"),
+    "share": git("https://github.com/misofm/share.git", "4311b8400272cf641d35569a8a262fc12a957c75"),
     "royalty_pool": git("https://github.com/misofm/royalty-pool.git", "de389b508708fb5c7a14ed3548e871626c844bdc"),
     "routed_stake": git("https://github.com/misofm/routed-stake.git", "599aff86473b482c04ef4baef2ddc7869603113a"),
     "vault": git("https://github.com/misofm/vault.git", "8a4d1c0edbc120efc642a682308662e2a0b7f407"),
@@ -77,9 +77,9 @@ MANIFESTS = {
     },
 }
 LOCK_NAMES = {
-    "composition_royalty_pool_plugin": {"MoveStdlib", "Sui", "bps", "composition_royalty_pool", "composition_royalty_pool_plugin", "hikida", "musicos", "miso_share", "royalty_pool", "vault"},
-    "recording_royalty_pool_plugin": {"MoveStdlib", "Sui", "bps", "hikida", "musicos", "miso_share", "recording_royalty_pool", "recording_royalty_pool_plugin", "royalty_pool", "vault"},
-    "release_revenue_distributor_plugin": {"MoveStdlib", "Sui", "bps", "composition_routed_stake", "composition_royalty_pool", "hikida", "musicos", "miso_share", "recording_royalty_pool", "release_revenue_distributor", "release_revenue_distributor_plugin", "routed_stake", "royalty_pool", "vault"},
+    "composition_royalty_pool_plugin": {"MoveStdlib", "Sui", "bps", "composition_royalty_pool", "composition_royalty_pool_plugin", "hikida", "musicos", "share", "royalty_pool", "vault"},
+    "recording_royalty_pool_plugin": {"MoveStdlib", "Sui", "bps", "hikida", "musicos", "share", "recording_royalty_pool", "recording_royalty_pool_plugin", "royalty_pool", "vault"},
+    "release_revenue_distributor_plugin": {"MoveStdlib", "Sui", "bps", "composition_routed_stake", "composition_royalty_pool", "hikida", "musicos", "share", "recording_royalty_pool", "release_revenue_distributor", "release_revenue_distributor_plugin", "routed_stake", "royalty_pool", "vault"},
 }
 
 COMMON_EDGES = {
@@ -87,8 +87,8 @@ COMMON_EDGES = {
     "Sui": {"MoveStdlib": "MoveStdlib"},
     "bps": {"std": "MoveStdlib", "sui": "Sui"},
     "hikida": {"std": "MoveStdlib", "sui": "Sui"},
-    "musicos": {"bps": "bps", "miso_share": "miso_share", "std": "MoveStdlib", "sui": "Sui"},
-    "miso_share": {"std": "MoveStdlib", "sui": "Sui"},
+    "musicos": {"bps": "bps", "share": "share", "std": "MoveStdlib", "sui": "Sui"},
+    "share": {"std": "MoveStdlib", "sui": "Sui"},
     "royalty_pool": {"hikida": "hikida", "std": "MoveStdlib", "sui": "Sui"},
     "routed_stake": {"royalty_pool": "royalty_pool", "std": "MoveStdlib", "sui": "Sui"},
     "vault": {"std": "MoveStdlib", "sui": "Sui"},
