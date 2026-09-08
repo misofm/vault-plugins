@@ -5,8 +5,8 @@ license = "Apache 2.0"
 authors = ["Miso Labs, Inc. (build@miso.network)"]
 
 [dependencies]
-composition_royalty_pool = { git = "https://github.com/misofm/protocol-actions.git", subdir = "composition_royalty_pool", rev = "56cb0b71d7fa1b2221e02216f8437ae2ede5ceff" }
-vault = { git = "https://github.com/misofm/vault.git", rev = "6b55f9fe8d89f7a7974cb843b10b9827fe13ef0f" }
-miso = { git = "https://github.com/misofm/protocol.git", rev = "ffa0e38b8ba4815d81de1076101ea37d2c71c623" }
-royalty_pool = { git = "https://github.com/misofm/royalty-pool.git", rev = "0b40a6f5d37c595d29acd7f6ebbee0a11177482f" }
+composition_royalty_pool = { git = "https://github.com/misofm/protocol-actions.git", subdir = "composition_royalty_pool", rev = "874d8b5933b03d826021e76401fbdf71743165fe" }
+vault = { git = "https://github.com/misofm/vault.git", rev = "8a4d1c0edbc120efc642a682308662e2a0b7f407" }
+miso = { git = "https://github.com/misofm/protocol.git", rev = "09f0dc699a112c37d8da8a765596cc1ed623fe79" }
+royalty_pool = { git = "https://github.com/misofm/royalty-pool.git", rev = "de389b508708fb5c7a14ed3548e871626c844bdc" }
 hikida = { git = "https://github.com/unconfirmedlabs/hikida.git", rev = "4abe4c1ff482655693698fa6ab8a6e2b58f8c635", modes = ["test"] }
