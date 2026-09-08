@@ -62,25 +62,6 @@ a copied `Published.toml`.
 
 ## Verification
 
-Run the compiler-backed ABI and bytecode gate from the repository root:
-
-```sh
-./scripts/check_plugin_abi.py --self-test
-./scripts/check_plugin_abi.py
-```
-
-The gate force-compiles disassembly with warnings and lints as errors. It
-checks exact function schemas and call sequences, witness opacity, dependency
-Git revisions and resolved package identities, and rejects ambiguous summaries,
-unparsed instructions, operational authority/address parameters, or any
-executor call graph other than
-`witness::new -> borrow_as_plugin -> matching Action -> put_back`.
-
-For an unpublished dependency such as the fresh Vault, the compiler assigns a
-deterministic symbolic build address. The Git-source allowlist and absence of
-publication metadata establish that it is unpublished; the retired Vault
-original ID is not accepted as current.
-
 Each package is independently buildable and testable:
 
 ```sh
