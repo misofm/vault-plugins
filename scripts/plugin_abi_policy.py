@@ -15,7 +15,7 @@ from typing import Any, Callable
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "scripts" / "fixtures"
-ACTION_REV = "439096790e41293a4d74df32334590e943dd3f88"
+ACTION_REV = "ee565afe75e2893bded650ade5c00a9271ad93a6"
 
 
 def fail(message: str) -> None:
@@ -31,18 +31,18 @@ SOURCES = {
     "Sui": git("https://github.com/MystenLabs/sui.git", "2a0becb2fcc6989e492981104af67f62f2c9511a", "crates/sui-framework/packages/sui-framework"),
     "bps": git("https://github.com/unconfirmedlabs/bps.git", "4ca1972a67d35c972ca567de7b08315e3778e52b"),
     "hikida": git("https://github.com/unconfirmedlabs/hikida.git", "4abe4c1ff482655693698fa6ab8a6e2b58f8c635"),
-    "miso": git("https://github.com/misofm/protocol.git", "6de5f9881ee62c81c57ce16832efc24dc33ae429"),
-    "miso_share": git("https://github.com/misofm/share.git", "561cfad98e4aaa63e6b34d5a6f4c22e397c70a52"),
-    "royalty_pool": git("https://github.com/misofm/royalty-pool.git", "2a55f9d8d47c8011ada5c74d181c807167d78da3"),
-    "routed_stake": git("https://github.com/misofm/routed-stake.git", "b469541340109c38c12ef0fb5cb46b033c9282c7"),
-    "vault": git("https://github.com/misofm/vault.git", "a171b3ad5a69868da857a361cbfb3503ff64e780"),
+    "musicos": git("https://github.com/misofm/musicos.git", "4fed48b2b5632122fb677d742881259c65b1bc78"),
+    "miso_share": git("https://github.com/misofm/share.git", "4999b7d639131fbd5b416b14ca798c28c0a6107d"),
+    "royalty_pool": git("https://github.com/misofm/royalty-pool.git", "de389b508708fb5c7a14ed3548e871626c844bdc"),
+    "routed_stake": git("https://github.com/misofm/routed-stake.git", "599aff86473b482c04ef4baef2ddc7869603113a"),
+    "vault": git("https://github.com/misofm/vault.git", "8a4d1c0edbc120efc642a682308662e2a0b7f407"),
 }
 for _action in (
     "composition_royalty_pool", "recording_royalty_pool",
     "release_revenue_distributor", "composition_routed_stake",
 ):
     SOURCES[_action] = git(
-        "https://github.com/misofm/protocol-actions.git", ACTION_REV, _action
+        "https://github.com/misofm/musicos-actions.git", ACTION_REV, _action
     )
 
 
@@ -58,17 +58,17 @@ def dependency(name: str, test: bool = False) -> dict[str, Any]:
 MANIFESTS = {
     "composition_royalty_pool_plugin": {
         "composition_royalty_pool": dependency("composition_royalty_pool"),
-        "vault": dependency("vault"), "miso": dependency("miso"),
+        "vault": dependency("vault"), "musicos": dependency("musicos"),
         "royalty_pool": dependency("royalty_pool"), "hikida": dependency("hikida", True),
     },
     "recording_royalty_pool_plugin": {
         "recording_royalty_pool": dependency("recording_royalty_pool"),
-        "vault": dependency("vault"), "miso": dependency("miso"),
+        "vault": dependency("vault"), "musicos": dependency("musicos"),
         "royalty_pool": dependency("royalty_pool"),
     },
     "release_revenue_distributor_plugin": {
         "release_revenue_distributor": dependency("release_revenue_distributor"),
-        "vault": dependency("vault"), "miso": dependency("miso"),
+        "vault": dependency("vault"), "musicos": dependency("musicos"),
         "composition_royalty_pool": dependency("composition_royalty_pool", True),
         "composition_routed_stake": dependency("composition_routed_stake", True),
         "recording_royalty_pool": dependency("recording_royalty_pool", True),
@@ -77,9 +77,9 @@ MANIFESTS = {
     },
 }
 LOCK_NAMES = {
-    "composition_royalty_pool_plugin": {"MoveStdlib", "Sui", "bps", "composition_royalty_pool", "composition_royalty_pool_plugin", "hikida", "miso", "miso_share", "royalty_pool", "vault"},
-    "recording_royalty_pool_plugin": {"MoveStdlib", "Sui", "bps", "hikida", "miso", "miso_share", "recording_royalty_pool", "recording_royalty_pool_plugin", "royalty_pool", "vault"},
-    "release_revenue_distributor_plugin": {"MoveStdlib", "Sui", "bps", "composition_routed_stake", "composition_royalty_pool", "hikida", "miso", "miso_share", "recording_royalty_pool", "release_revenue_distributor", "release_revenue_distributor_plugin", "routed_stake", "royalty_pool", "vault"},
+    "composition_royalty_pool_plugin": {"MoveStdlib", "Sui", "bps", "composition_royalty_pool", "composition_royalty_pool_plugin", "hikida", "musicos", "miso_share", "royalty_pool", "vault"},
+    "recording_royalty_pool_plugin": {"MoveStdlib", "Sui", "bps", "hikida", "musicos", "miso_share", "recording_royalty_pool", "recording_royalty_pool_plugin", "royalty_pool", "vault"},
+    "release_revenue_distributor_plugin": {"MoveStdlib", "Sui", "bps", "composition_routed_stake", "composition_royalty_pool", "hikida", "musicos", "miso_share", "recording_royalty_pool", "release_revenue_distributor", "release_revenue_distributor_plugin", "routed_stake", "royalty_pool", "vault"},
 }
 
 COMMON_EDGES = {
@@ -87,25 +87,25 @@ COMMON_EDGES = {
     "Sui": {"MoveStdlib": "MoveStdlib"},
     "bps": {"std": "MoveStdlib", "sui": "Sui"},
     "hikida": {"std": "MoveStdlib", "sui": "Sui"},
-    "miso": {"bps": "bps", "miso_share": "miso_share", "std": "MoveStdlib", "sui": "Sui"},
+    "musicos": {"bps": "bps", "miso_share": "miso_share", "std": "MoveStdlib", "sui": "Sui"},
     "miso_share": {"std": "MoveStdlib", "sui": "Sui"},
     "royalty_pool": {"hikida": "hikida", "std": "MoveStdlib", "sui": "Sui"},
     "routed_stake": {"royalty_pool": "royalty_pool", "std": "MoveStdlib", "sui": "Sui"},
     "vault": {"std": "MoveStdlib", "sui": "Sui"},
     "composition_royalty_pool": {
-        "hikida": "hikida", "miso": "miso", "royalty_pool": "royalty_pool",
+        "hikida": "hikida", "musicos": "musicos", "royalty_pool": "royalty_pool",
         "std": "MoveStdlib", "sui": "Sui", "vault": "vault",
     },
     "recording_royalty_pool": {
-        "hikida": "hikida", "miso": "miso", "royalty_pool": "royalty_pool",
+        "hikida": "hikida", "musicos": "musicos", "royalty_pool": "royalty_pool",
         "std": "MoveStdlib", "sui": "Sui", "vault": "vault",
     },
     "release_revenue_distributor": {
-        "hikida": "hikida", "miso": "miso", "std": "MoveStdlib",
+        "hikida": "hikida", "musicos": "musicos", "std": "MoveStdlib",
         "sui": "Sui", "vault": "vault",
     },
     "composition_routed_stake": {
-        "hikida": "hikida", "miso": "miso", "routed_stake": "routed_stake",
+        "hikida": "hikida", "musicos": "musicos", "routed_stake": "routed_stake",
         "royalty_pool": "royalty_pool", "std": "MoveStdlib", "sui": "Sui",
         "vault": "vault",
     },
@@ -115,14 +115,14 @@ LOCK_EDGES = {
         **{name: COMMON_EDGES[name] for name in LOCK_NAMES["composition_royalty_pool_plugin"] if name in COMMON_EDGES},
         "composition_royalty_pool_plugin": {
             "composition_royalty_pool": "composition_royalty_pool", "hikida": "hikida",
-            "miso": "miso", "royalty_pool": "royalty_pool", "std": "MoveStdlib",
+            "musicos": "musicos", "royalty_pool": "royalty_pool", "std": "MoveStdlib",
             "sui": "Sui", "vault": "vault",
         },
     },
     "recording_royalty_pool_plugin": {
         **{name: COMMON_EDGES[name] for name in LOCK_NAMES["recording_royalty_pool_plugin"] if name in COMMON_EDGES},
         "recording_royalty_pool_plugin": {
-            "miso": "miso", "recording_royalty_pool": "recording_royalty_pool",
+            "musicos": "musicos", "recording_royalty_pool": "recording_royalty_pool",
             "royalty_pool": "royalty_pool", "std": "MoveStdlib", "sui": "Sui",
             "vault": "vault",
         },
@@ -131,7 +131,7 @@ LOCK_EDGES = {
         **{name: COMMON_EDGES[name] for name in LOCK_NAMES["release_revenue_distributor_plugin"] if name in COMMON_EDGES},
         "release_revenue_distributor_plugin": {
             "composition_routed_stake": "composition_routed_stake",
-            "composition_royalty_pool": "composition_royalty_pool", "miso": "miso",
+            "composition_royalty_pool": "composition_royalty_pool", "musicos": "musicos",
             "recording_royalty_pool": "recording_royalty_pool",
             "release_revenue_distributor": "release_revenue_distributor",
             "routed_stake": "routed_stake", "royalty_pool": "royalty_pool",
@@ -145,6 +145,17 @@ def addr(suffix: str) -> str:
     return "0x" + suffix.rjust(64, "0")
 
 
+# COMMON_IDS and ORIGINAL_IDS encode resolved on-chain package addresses (and the
+# still-unrenamed "miso" key that check_ids compares against address_mapping.json),
+# not source pins. This repo's Published.toml files are stale relative to the
+# post-rename dependency graph (miso -> musicos, miso_party -> partyos, and the
+# matching *-actions/*-extensions renames), so these two tables cannot be
+# corrected yet without producing IDs that don't match any real publication.
+# They must be updated in the same wave that republishes these three packages
+# against the renamed dependencies -- do not assume the rest of this file is
+# similarly blocked; every source-pin table above (SOURCES, MANIFESTS,
+# LOCK_NAMES, LOCK_EDGES, and the schemas() type shapes) is independent of the
+# republish and must stay current with Move.toml/Move.lock now.
 COMMON_IDS = {
     "std": addr("1"), "sui": addr("2"),
     "miso": "0x5788d67e76b7e6de85ba335731a068ef7cbac7b17504577f293d41c5ba3d1ff0",
@@ -204,24 +215,24 @@ def fn(visibility: str, entry: bool, tps: tuple[str, ...], params: list[tuple[st
 def schemas(package: str) -> tuple[dict[str, FunctionSpec], str, tuple[str, ...]]:
     if package.startswith("composition_"):
         share, currency = tp("CompositionShare"), tp("Currency")
-        cap = dt("miso", "composition", "CompositionAdminCap", (True, share))
-        subject = dt("miso", "composition", "Composition", (True, share))
+        cap = dt("musicos", "composition", "CompositionAdminCap", (True, share))
+        subject = dt("musicos", "composition", "Composition", (True, share))
         pool = dt("royalty_pool", "pool", "RoyaltyPool", (True, share), (True, currency))
         subject_name, install_tps = "composition", ("CompositionShare",)
         operation_tps = ("CompositionShare", "Currency")
         operations, action = ("receive_and_deposit", "redeem_and_deposit"), "composition_royalty_pool"
     elif package.startswith("recording_"):
         share, composition_share, currency = tp("RecordingShare"), tp("CompositionShare"), tp("Currency")
-        cap = dt("miso", "recording", "RecordingAdminCap", (True, share))
-        subject = dt("miso", "recording", "Recording", (True, share), (True, composition_share))
+        cap = dt("musicos", "recording", "RecordingAdminCap", (True, share))
+        subject = dt("musicos", "recording", "Recording", (True, share), (True, composition_share))
         pool = dt("royalty_pool", "pool", "RoyaltyPool", (True, share), (True, currency))
         subject_name, install_tps = "recording", ("RecordingShare",)
         operation_tps = ("RecordingShare", "CompositionShare", "Currency")
         operations, action = ("receive_and_deposit", "redeem_and_deposit"), "recording_royalty_pool"
     else:
         currency, pool = tp("Currency"), None
-        cap = dt("miso", "release", "ReleaseAdminCap")
-        subject = dt("miso", "release", "Release")
+        cap = dt("musicos", "release", "ReleaseAdminCap")
+        subject = dt("musicos", "release", "Release")
         subject_name, install_tps, operation_tps = "release", (), ("Currency",)
         operations, action = ("receive_and_distribute", "redeem_all_and_distribute"), "release_revenue_distributor"
     vault = dt("vault", "vault", "Vault", (False, cap))
