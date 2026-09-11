@@ -10,8 +10,9 @@ matching canonical royalty pool.
 Each executor performs only `borrow_as_plugin -> matching Action -> put_back`.
 The plugin exposes no pool creation or address derivation; call the public
 Action directly for `new_pool` and `pool_address`. All validation, arithmetic,
-transfers, events, and business rules remain in the Action or royalty-pool
-core.
+transfers, and business rules remain in the Action or royalty-pool core. Plugin
+events describe installation, custody, and observed financial changes around
+those operations.
 
 Operational entries return `()` and accept no Vault admin cap, address,
 recipient, destination, sender, or transaction context. Test-only public
