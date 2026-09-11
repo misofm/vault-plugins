@@ -9,6 +9,7 @@ use musicos::test_helpers;
 use musicos::track;
 use release_revenue_distributor::release_revenue_distributor as action;
 use release_revenue_distributor_plugin::release_revenue_distributor_plugin as plugin;
+use release_revenue_distributor_plugin::witness::Witness;
 use std::unit_test::{assert_eq, destroy};
 use sui::accumulator::AccumulatorRoot;
 use sui::balance;
@@ -25,6 +26,8 @@ const ENotVaultAdmin: u64 = 0;
 const STRANGER: address = @0x51;
 
 public struct CURRENCY() has drop;
+public struct OTHER_CURRENCY() has drop;
+public struct OTHER_WITNESS() has drop;
 
 fun new_vault(
     cap: ReleaseAdminCap,
@@ -68,6 +71,64 @@ fun cleanup(
     destroy(release)
 }
 
+fun assert_installed_event(
+    vault: &Vault<ReleaseAdminCap>,
+    vault_admin_cap: &VaultAdminCap<ReleaseAdminCap>,
+    cap_id: sui::object::ID,
+) {
+    let events = event::events_by_type<
+        plugin::ReleaseRevenueDistributorPluginInstalledEvent<ReleaseAdminCap, Witness>
+    >();
+    assert_eq!(events.length(), 1);
+    let (
+        event_vault_id,
+        event_vault_admin_cap_id,
+        event_release_admin_cap_id,
+        vault_active,
+        authorized_before,
+        authorized_after,
+        count_before,
+        count_after,
+    ) = plugin::installed_event_fields(&events[0]);
+    assert_eq!(event_vault_id, object::id(vault).to_address());
+    assert_eq!(event_vault_admin_cap_id, object::id(vault_admin_cap).to_address());
+    assert_eq!(event_release_admin_cap_id, cap_id.to_address());
+    assert!(vault_active);
+    assert!(!authorized_before);
+    assert!(authorized_after);
+    assert_eq!(count_before, 0);
+    assert_eq!(count_after, 1);
+}
+
+fun assert_uninstalled_event(
+    vault: &Vault<ReleaseAdminCap>,
+    vault_admin_cap: &VaultAdminCap<ReleaseAdminCap>,
+    cap_id: sui::object::ID,
+) {
+    let events = event::events_by_type<
+        plugin::ReleaseRevenueDistributorPluginUninstalledEvent<ReleaseAdminCap, Witness>
+    >();
+    assert_eq!(events.length(), 1);
+    let (
+        event_vault_id,
+        event_vault_admin_cap_id,
+        event_release_admin_cap_id,
+        vault_active,
+        authorized_before,
+        authorized_after,
+        count_before,
+        count_after,
+    ) = plugin::uninstalled_event_fields(&events[0]);
+    assert_eq!(event_vault_id, object::id(vault).to_address());
+    assert_eq!(event_vault_admin_cap_id, object::id(vault_admin_cap).to_address());
+    assert_eq!(event_release_admin_cap_id, cap_id.to_address());
+    assert!(vault_active);
+    assert!(authorized_before);
+    assert!(!authorized_after);
+    assert_eq!(count_before, 1);
+    assert_eq!(count_after, 0);
+}
+
 #[test]
 fun direct_action_and_capless_plugin_emit_identical_distributions() {
     let mut scenario = test_scenario::begin(@0x0);
@@ -101,21 +162,74 @@ fun direct_action_and_capless_plugin_emit_identical_distributions() {
 
     plugin::install(&mut vault, &vault_admin_cap);
     assert!(plugin::is_installed(&vault));
+    assert_installed_event(&vault, &vault_admin_cap, cap_id);
+    assert_eq!(
+        event::events_by_type<vault::PluginAuthorizedEvent<ReleaseAdminCap, Witness>>().length(),
+        1,
+    );
     let plugin_coin = coin::from_balance(
-        balance::create_for_testing<CURRENCY>(10_001),
+        balance::create_for_testing<CURRENCY>(6_000),
+        scenario.ctx(),
+    );
+    let plugin_coin_2 = coin::from_balance(
+        balance::create_for_testing<CURRENCY>(4_001),
         scenario.ctx(),
     );
     let plugin_coin_id = object::id(&plugin_coin);
+    let plugin_coin_2_id = object::id(&plugin_coin_2);
     transfer::public_transfer(plugin_coin, release_id.to_address());
+    transfer::public_transfer(plugin_coin_2, release_id.to_address());
     scenario.next_tx(STRANGER);
     let plugin_ticket = test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(plugin_coin_id);
+    let plugin_ticket_2 =
+        test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(plugin_coin_2_id);
     plugin::receive_and_distribute_for_testing(
         &mut vault,
         &mut release,
-        vector[plugin_ticket],
+        vector[plugin_ticket, plugin_ticket_2],
+    );
+    let coin_events = event::events_by_type<
+        plugin::ReleaseRevenueCoinsDistributedEvent<CURRENCY, ReleaseAdminCap, Witness>
+    >();
+    assert_eq!(coin_events.length(), 1);
+    let (
+        event_vault_id,
+        event_cap_id,
+        event_release_id,
+        input_coin_count,
+        input_coin_ids,
+    ) = plugin::coins_distributed_event_fields(&coin_events[0]);
+    assert_eq!(event_vault_id, object::id(&vault).to_address());
+    assert_eq!(event_cap_id, cap_id.to_address());
+    assert_eq!(event_release_id, release_id.to_address());
+    assert_eq!(input_coin_count, 2);
+    assert_eq!(
+        input_coin_ids,
+        vector[plugin_coin_id.to_address(), plugin_coin_2_id.to_address()],
+    );
+    assert_eq!(
+        event::events_by_type<
+            plugin::ReleaseRevenueCoinsDistributedEvent<OTHER_CURRENCY, ReleaseAdminCap, Witness>
+        >()
+        .length(),
+        0,
+    );
+    assert_eq!(
+        event::events_by_type<
+            plugin::ReleaseRevenueCoinsDistributedEvent<CURRENCY, ReleaseAdminCap, OTHER_WITNESS>
+        >()
+        .length(),
+        0,
     );
     let root = scenario.take_shared<AccumulatorRoot>();
     plugin::redeem_all_and_distribute_for_testing<CURRENCY>(&mut vault, &mut release, &root);
+    assert_eq!(
+        event::events_by_type<
+            plugin::ReleaseRevenueFundsDistributedEvent<CURRENCY, ReleaseAdminCap, Witness>
+        >()
+        .length(),
+        0,
+    );
 
     let summaries =
         event::events_by_type<action::ReleaseRevenueDistributedEvent<CURRENCY>>();
@@ -146,8 +260,115 @@ fun direct_action_and_capless_plugin_emit_identical_distributions() {
     vault.put_back(cap, receipt);
     plugin::uninstall(&mut vault, &vault_admin_cap);
     assert!(!plugin::is_installed(&vault));
+    assert_uninstalled_event(&vault, &vault_admin_cap, cap_id);
+    assert_eq!(
+        event::events_by_type<vault::PluginRevokedEvent<ReleaseAdminCap, Witness>>().length(),
+        1,
+    );
     cleanup(release, vault, vault_admin_cap);
     scenario.end();
+}
+
+#[test]
+fun install_uninstall_reinstall_events_capture_each_transition() {
+    let ctx = &mut tx_context::dummy();
+    let (release, mut vault, vault_admin_cap) = fixture(ctx);
+    let cap_id = vault.cap_id();
+
+    plugin::install(&mut vault, &vault_admin_cap);
+    assert_installed_event(&vault, &vault_admin_cap, cap_id);
+    let events_before_view = event::num_events();
+    assert!(plugin::is_installed(&vault));
+    assert_eq!(event::num_events(), events_before_view);
+
+    plugin::uninstall(&mut vault, &vault_admin_cap);
+    assert_uninstalled_event(&vault, &vault_admin_cap, cap_id);
+    plugin::install(&mut vault, &vault_admin_cap);
+    let installed_events = event::events_by_type<
+        plugin::ReleaseRevenueDistributorPluginInstalledEvent<ReleaseAdminCap, Witness>
+    >();
+    assert_eq!(installed_events.length(), 2);
+    let (_, _, event_cap_id, active, authorized_before, authorized_after, count_before, count_after) =
+        plugin::installed_event_fields(&installed_events[1]);
+    assert_eq!(event_cap_id, cap_id.to_address());
+    assert!(active);
+    assert!(!authorized_before);
+    assert!(authorized_after);
+    assert_eq!(count_before, 0);
+    assert_eq!(count_after, 1);
+    assert_eq!(
+        event::events_by_type<vault::PluginAuthorizedEvent<ReleaseAdminCap, Witness>>().length(),
+        2,
+    );
+    assert_eq!(
+        event::events_by_type<vault::PluginRevokedEvent<ReleaseAdminCap, Witness>>().length(),
+        1,
+    );
+
+    plugin::uninstall(&mut vault, &vault_admin_cap);
+    cleanup(release, vault, vault_admin_cap);
+}
+
+#[test]
+fun nonempty_zero_coin_keeps_plugin_and_action_events() {
+    let mut scenario = test_scenario::begin(@0x0);
+    let (mut release, mut vault, vault_admin_cap) = fixture(scenario.ctx());
+    let release_id = object::id(&release);
+    let cap_id = vault.cap_id();
+    plugin::install(&mut vault, &vault_admin_cap);
+    let zero_coin = coin::zero<CURRENCY>(scenario.ctx());
+    let zero_coin_id = object::id(&zero_coin);
+    transfer::public_transfer(zero_coin, release_id.to_address());
+
+    scenario.next_tx(STRANGER);
+    let ticket = test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(zero_coin_id);
+    plugin::receive_and_distribute_for_testing(
+        &mut vault,
+        &mut release,
+        vector[ticket],
+    );
+    let coin_events = event::events_by_type<
+        plugin::ReleaseRevenueCoinsDistributedEvent<CURRENCY, ReleaseAdminCap, Witness>
+    >();
+    assert_eq!(coin_events.length(), 1);
+    let (_, event_cap_id, event_release_id, count, ids) =
+        plugin::coins_distributed_event_fields(&coin_events[0]);
+    assert_eq!(event_cap_id, cap_id.to_address());
+    assert_eq!(event_release_id, release_id.to_address());
+    assert_eq!(count, 1);
+    assert_eq!(ids, vector[zero_coin_id.to_address()]);
+    let tracks = event::events_by_type<action::ReleaseTrackRevenueDistributedEvent<CURRENCY>>();
+    assert_eq!(tracks.length(), 2);
+    let (_, _, _, amount_a) = action::track_event_fields(&tracks[0]);
+    let (_, _, _, amount_b) = action::track_event_fields(&tracks[1]);
+    assert_eq!(amount_a, 0);
+    assert_eq!(amount_b, 0);
+    let summaries = event::events_by_type<action::ReleaseRevenueDistributedEvent<CURRENCY>>();
+    assert_eq!(summaries.length(), 1);
+    let (_, input, distributed, remainder) = action::distribution_event_fields(&summaries[0]);
+    assert_eq!(input, 0);
+    assert_eq!(distributed, 0);
+    assert_eq!(remainder, 0);
+    assert_eq!(
+        event::events_by_type<
+            plugin::ReleaseRevenueFundsDistributedEvent<CURRENCY, ReleaseAdminCap, Witness>
+        >()
+        .length(),
+        0,
+    );
+    plugin::uninstall(&mut vault, &vault_admin_cap);
+    cleanup(release, vault, vault_admin_cap);
+    scenario.end();
+}
+
+#[test, expected_failure]
+fun empty_coin_vector_preserves_hikida_abort() {
+    let mut scenario = test_scenario::begin(@0x0);
+    let (mut release, mut vault, vault_admin_cap) = fixture(scenario.ctx());
+    plugin::install(&mut vault, &vault_admin_cap);
+    scenario.next_tx(STRANGER);
+    plugin::receive_and_distribute_for_testing<CURRENCY>(&mut vault, &mut release, vector[]);
+    abort
 }
 
 #[test, expected_failure(abort_code = EPluginNotAuthorized, location = vault)]
