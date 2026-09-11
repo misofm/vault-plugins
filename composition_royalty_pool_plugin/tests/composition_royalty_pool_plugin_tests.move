@@ -75,6 +75,183 @@ fun cleanup(
     destroy(composition)
 }
 
+fun assert_plugin_event_silence() {
+    assert_eq!(
+        event::events_by_type<plugin::CompositionVaultCapabilityBorrowedEvent<SHARE, CURRENCY>>()
+            .length(),
+        0,
+    );
+    assert_eq!(
+        event::events_by_type<plugin::CompositionCoinsDepositedEvent<SHARE, CURRENCY>>()
+            .length(),
+        0,
+    );
+    assert_eq!(
+        event::events_by_type<plugin::CompositionFundsDepositedEvent<SHARE, CURRENCY>>()
+            .length(),
+        0,
+    );
+}
+
+fun assert_installed_event(
+    vault: &Vault<CompositionAdminCap<SHARE>>,
+    vault_admin_cap: &VaultAdminCap<CompositionAdminCap<SHARE>>,
+    cap_id: sui::object::ID,
+) {
+    let events =
+        event::events_by_type<plugin::CompositionRoyaltyPoolPluginInstalledEvent<SHARE>>();
+    assert_eq!(events.length(), 1);
+    let (vault_id, installed_cap_id, admin_cap_id, plugins_id, count, installed) =
+        plugin::installed_event_fields(&events[0]);
+    assert_eq!(vault_id, object::id(vault).to_address());
+    assert_eq!(installed_cap_id, cap_id.to_address());
+    assert_eq!(admin_cap_id, object::id(vault_admin_cap).to_address());
+    assert_eq!(plugins_id, object::id(vault.authorized_plugins()).to_address());
+    assert_eq!(count, 1);
+    assert!(installed);
+}
+
+fun assert_uninstalled_event(
+    vault: &Vault<CompositionAdminCap<SHARE>>,
+    vault_admin_cap: &VaultAdminCap<CompositionAdminCap<SHARE>>,
+    cap_id: sui::object::ID,
+) {
+    let events =
+        event::events_by_type<plugin::CompositionRoyaltyPoolPluginUninstalledEvent<SHARE>>();
+    assert_eq!(events.length(), 1);
+    let (vault_id, uninstalled_cap_id, admin_cap_id, plugins_id, count, installed) =
+        plugin::uninstalled_event_fields(&events[0]);
+    assert_eq!(vault_id, object::id(vault).to_address());
+    assert_eq!(uninstalled_cap_id, cap_id.to_address());
+    assert_eq!(admin_cap_id, object::id(vault_admin_cap).to_address());
+    assert_eq!(plugins_id, object::id(vault.authorized_plugins()).to_address());
+    assert_eq!(count, 0);
+    assert!(!installed);
+}
+
+fun assert_borrowed_event(
+    event: &plugin::CompositionVaultCapabilityBorrowedEvent<SHARE, CURRENCY>,
+    vault_id: address,
+    cap_id: address,
+    composition_id: address,
+    pool_id: address,
+) {
+    let (event_vault_id, event_cap_id, event_composition_id, event_pool_id, active, available) =
+        plugin::borrowed_event_fields(event);
+    assert_eq!(event_vault_id, vault_id);
+    assert_eq!(event_cap_id, cap_id);
+    assert_eq!(event_composition_id, composition_id);
+    assert_eq!(event_pool_id, pool_id);
+    assert!(active);
+    assert!(!available);
+}
+
+fun assert_coins_event(
+    event: &plugin::CompositionCoinsDepositedEvent<SHARE, CURRENCY>,
+    vault_id: address,
+    cap_id: address,
+    composition_id: address,
+    pool_id: address,
+    pool_balance_before: u64,
+    pool_balance_after: u64,
+    staked_shares: u64,
+    reward_per_share_before: u256,
+    reward_per_share_after: u256,
+    carry_before: u128,
+    carry_after: u128,
+    cumulative_deposits_before: u128,
+    cumulative_deposits_after: u128,
+    coin_ids: vector<address>,
+) {
+    let (
+        event_vault_id,
+        event_cap_id,
+        event_composition_id,
+        event_pool_id,
+        event_pool_balance_before,
+        event_pool_balance_after,
+        event_staked_shares,
+        event_reward_per_share_before,
+        event_reward_per_share_after,
+        event_carry_before,
+        event_carry_after,
+        event_cumulative_deposits_before,
+        event_cumulative_deposits_after,
+        active,
+        available,
+        event_coin_ids,
+    ) = plugin::coins_deposited_event_fields(event);
+    assert_eq!(event_vault_id, vault_id);
+    assert_eq!(event_cap_id, cap_id);
+    assert_eq!(event_composition_id, composition_id);
+    assert_eq!(event_pool_id, pool_id);
+    assert_eq!(event_pool_balance_before, pool_balance_before);
+    assert_eq!(event_pool_balance_after, pool_balance_after);
+    assert_eq!(event_staked_shares, staked_shares);
+    assert_eq!(event_reward_per_share_before, reward_per_share_before);
+    assert_eq!(event_reward_per_share_after, reward_per_share_after);
+    assert_eq!(event_carry_before, carry_before);
+    assert_eq!(event_carry_after, carry_after);
+    assert_eq!(event_cumulative_deposits_before, cumulative_deposits_before);
+    assert_eq!(event_cumulative_deposits_after, cumulative_deposits_after);
+    assert!(active);
+    assert!(available);
+    assert_eq!(event_coin_ids, coin_ids);
+}
+
+fun assert_funds_event(
+    event: &plugin::CompositionFundsDepositedEvent<SHARE, CURRENCY>,
+    vault_id: address,
+    cap_id: address,
+    composition_id: address,
+    pool_id: address,
+    pool_balance_before: u64,
+    pool_balance_after: u64,
+    staked_shares: u64,
+    reward_per_share_before: u256,
+    reward_per_share_after: u256,
+    carry_before: u128,
+    carry_after: u128,
+    cumulative_deposits_before: u128,
+    cumulative_deposits_after: u128,
+    amount: u64,
+) {
+    let (
+        event_vault_id,
+        event_cap_id,
+        event_composition_id,
+        event_pool_id,
+        event_pool_balance_before,
+        event_pool_balance_after,
+        event_staked_shares,
+        event_reward_per_share_before,
+        event_reward_per_share_after,
+        event_carry_before,
+        event_carry_after,
+        event_cumulative_deposits_before,
+        event_cumulative_deposits_after,
+        active,
+        available,
+        event_amount,
+    ) = plugin::funds_deposited_event_fields(event);
+    assert_eq!(event_vault_id, vault_id);
+    assert_eq!(event_cap_id, cap_id);
+    assert_eq!(event_composition_id, composition_id);
+    assert_eq!(event_pool_id, pool_id);
+    assert_eq!(event_pool_balance_before, pool_balance_before);
+    assert_eq!(event_pool_balance_after, pool_balance_after);
+    assert_eq!(event_staked_shares, staked_shares);
+    assert_eq!(event_reward_per_share_before, reward_per_share_before);
+    assert_eq!(event_reward_per_share_after, reward_per_share_after);
+    assert_eq!(event_carry_before, carry_before);
+    assert_eq!(event_carry_after, carry_after);
+    assert_eq!(event_cumulative_deposits_before, cumulative_deposits_before);
+    assert_eq!(event_cumulative_deposits_after, cumulative_deposits_after);
+    assert!(active);
+    assert!(available);
+    assert_eq!(event_amount, amount);
+}
+
 #[test]
 fun direct_action_and_capless_plugin_have_identical_effects() {
     let mut scenario = test_scenario::begin(@0xA);
@@ -107,27 +284,116 @@ fun direct_action_and_capless_plugin_have_identical_effects() {
         event::events_by_type<pool::RoyaltyDepositedEvent<SHARE, CURRENCY>>();
     assert_eq!(direct_deposits.length(), 1);
     let (direct_pool, direct_value) = pool::deposited_event_fields(&direct_deposits[0]);
+    assert_plugin_event_silence();
 
     plugin::install(&mut vault, &vault_admin_cap);
+    let events_before_is_installed = event::num_events();
     assert!(plugin::is_installed(&vault));
+    assert_eq!(event::num_events(), events_before_is_installed);
+    assert_installed_event(&vault, &vault_admin_cap, cap_id);
     let plugin_coin = coin::from_balance(
         balance::create_for_testing<CURRENCY>(222),
         scenario.ctx(),
     );
+    let plugin_zero = coin::from_balance(
+        balance::create_for_testing<CURRENCY>(0),
+        scenario.ctx(),
+    );
     let plugin_coin_id = object::id(&plugin_coin);
+    let plugin_zero_id = object::id(&plugin_zero);
+    transfer::public_transfer(plugin_zero, composition_id.to_address());
     transfer::public_transfer(plugin_coin, composition_id.to_address());
 
     // This transaction sender holds neither VaultAdminCap nor raw admin cap.
     scenario.next_tx(STRANGER);
+    let plugin_zero_ticket =
+        test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(plugin_zero_id);
     let plugin_ticket = test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(plugin_coin_id);
+    let plugin_pool_balance_before = pool.balance().value();
+    let plugin_staked_shares = pool.staked_shares();
+    let plugin_reward_per_share_before = pool.cumulative_reward_per_share();
+    let plugin_carry_before = pool.carry();
+    let plugin_cumulative_deposits_before = pool.cumulative_deposits();
     plugin::receive_and_deposit_for_testing(
         &mut vault,
         &mut composition,
         &mut pool,
-        vector[plugin_ticket],
+        vector[plugin_zero_ticket, plugin_ticket],
+    );
+    let plugin_pool_balance_after = pool.balance().value();
+    let plugin_reward_per_share_after = pool.cumulative_reward_per_share();
+    let plugin_carry_after = pool.carry();
+    let plugin_cumulative_deposits_after = pool.cumulative_deposits();
+    let borrowed_events = event::events_by_type<
+        plugin::CompositionVaultCapabilityBorrowedEvent<SHARE, CURRENCY>
+    >();
+    assert_eq!(borrowed_events.length(), 1);
+    assert_borrowed_event(
+        &borrowed_events[0],
+        object::id(&vault).to_address(),
+        cap_id.to_address(),
+        composition_id.to_address(),
+        pool_id.to_address(),
+    );
+    let coin_events = event::events_by_type<plugin::CompositionCoinsDepositedEvent<SHARE, CURRENCY>>();
+    assert_eq!(coin_events.length(), 1);
+    assert_coins_event(
+        &coin_events[0],
+        object::id(&vault).to_address(),
+        cap_id.to_address(),
+        composition_id.to_address(),
+        pool_id.to_address(),
+        plugin_pool_balance_before,
+        plugin_pool_balance_after,
+        plugin_staked_shares,
+        plugin_reward_per_share_before,
+        plugin_reward_per_share_after,
+        plugin_carry_before,
+        plugin_carry_after,
+        plugin_cumulative_deposits_before,
+        plugin_cumulative_deposits_after,
+        vector[plugin_zero_id.to_address(), plugin_coin_id.to_address()],
     );
     balance::create_for_testing<CURRENCY>(333).send_funds(composition_id.to_address());
+    let funds_pool_balance_before = pool.balance().value();
+    let funds_staked_shares = pool.staked_shares();
+    let funds_reward_per_share_before = pool.cumulative_reward_per_share();
+    let funds_carry_before = pool.carry();
+    let funds_cumulative_deposits_before = pool.cumulative_deposits();
     plugin::redeem_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 333);
+    let funds_pool_balance_after = pool.balance().value();
+    let funds_reward_per_share_after = pool.cumulative_reward_per_share();
+    let funds_carry_after = pool.carry();
+    let funds_cumulative_deposits_after = pool.cumulative_deposits();
+    let borrowed_events =
+        event::events_by_type<plugin::CompositionVaultCapabilityBorrowedEvent<SHARE, CURRENCY>>();
+    assert_eq!(borrowed_events.length(), 2);
+    assert_borrowed_event(
+        &borrowed_events[1],
+        object::id(&vault).to_address(),
+        cap_id.to_address(),
+        composition_id.to_address(),
+        pool_id.to_address(),
+    );
+    let funds_events = event::events_by_type<plugin::CompositionFundsDepositedEvent<SHARE, CURRENCY>>();
+    assert_eq!(funds_events.length(), 1);
+    assert_funds_event(
+        &funds_events[0],
+        object::id(&vault).to_address(),
+        cap_id.to_address(),
+        composition_id.to_address(),
+        pool_id.to_address(),
+        funds_pool_balance_before,
+        funds_pool_balance_after,
+        funds_staked_shares,
+        funds_reward_per_share_before,
+        funds_reward_per_share_after,
+        funds_carry_before,
+        funds_carry_after,
+        funds_cumulative_deposits_before,
+        funds_cumulative_deposits_after,
+        333,
+    );
 
     assert_eq!(pool.cumulative_deposits(), 666);
     let deposits = event::events_by_type<pool::RoyaltyDepositedEvent<SHARE, CURRENCY>>();
@@ -149,7 +415,10 @@ fun direct_action_and_capless_plugin_have_identical_effects() {
     balance::destroy_for_testing(stake::destroy(stake));
     balance::destroy_for_testing(reward);
     plugin::uninstall(&mut vault, &vault_admin_cap);
+    let events_before_is_installed = event::num_events();
     assert!(!plugin::is_installed(&vault));
+    assert_eq!(event::num_events(), events_before_is_installed);
+    assert_uninstalled_event(&vault, &vault_admin_cap, cap_id);
     destroy(pool);
     cleanup(composition, vault, vault_admin_cap);
     scenario.end();
