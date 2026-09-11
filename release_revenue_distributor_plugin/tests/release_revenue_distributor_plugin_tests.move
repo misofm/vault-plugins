@@ -361,14 +361,16 @@ fun nonempty_zero_coin_keeps_plugin_and_action_events() {
     scenario.end();
 }
 
-#[test, expected_failure]
+#[test, expected_failure(abort_code = 0)]
 fun empty_coin_vector_preserves_hikida_abort() {
     let mut scenario = test_scenario::begin(@0x0);
     let (mut release, mut vault, vault_admin_cap) = fixture(scenario.ctx());
     plugin::install(&mut vault, &vault_admin_cap);
     scenario.next_tx(STRANGER);
     plugin::receive_and_distribute_for_testing<CURRENCY>(&mut vault, &mut release, vector[]);
-    abort
+    plugin::uninstall(&mut vault, &vault_admin_cap);
+    cleanup(release, vault, vault_admin_cap);
+    scenario.end();
 }
 
 #[test, expected_failure(abort_code = EPluginNotAuthorized, location = vault)]
