@@ -6,7 +6,6 @@ module composition_royalty_pool_plugin::composition_royalty_pool_plugin_tests;
 
 use composition_royalty_pool::composition_royalty_pool as action;
 use composition_royalty_pool_plugin::composition_royalty_pool_plugin as plugin;
-use hikida::hikida;
 use musicos::composition::{Self, Composition, CompositionAdminCap};
 use royalty_pool::pool::{Self, RoyaltyPool};
 use royalty_pool::stake::{Self, Stake};
@@ -489,7 +488,7 @@ fun wrong_derived_pool_aborts() {
     abort
 }
 
-#[test, expected_failure(abort_code = ENoValueToRedeem, location = hikida)]
+#[test, expected_failure(abort_code = ENoValueToRedeem, location = action)]
 fun settled_value_boundary_reaches_action_guard() {
     let mut scenario = test_scenario::begin(@0x0);
     sui::accumulator::create_for_testing(scenario.ctx());

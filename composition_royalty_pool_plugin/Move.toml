@@ -9,4 +9,4 @@ composition_royalty_pool = { git = "https://github.com/misofm/musicos-actions.gi
 vault = { git = "https://github.com/misofm/vault.git", rev = "23ddacdfc6248285ba0333f58d7e99f4bc3a1fa2" }
 musicos = { git = "https://github.com/misofm/musicos.git", rev = "4cb3c926b1f9bb5103f3f7194e4e1e34b6c87840" }
 royalty_pool = { git = "https://github.com/misofm/royalty-pool.git", rev = "18c55f623a9a709fea9d999cc995d29fd0266332" }
-hikida = { git = "https://github.com/unconfirmedlabs/hikida.git", rev = "4abe4c1ff482655693698fa6ab8a6e2b58f8c635", modes = ["test"] }
+hikida = { git = "https://github.com/unconfirmedlabs/hikida.git", rev = "c91d6a0f536a5f1457b342a8838fc1d7ba09212e", modes = ["test"] }
