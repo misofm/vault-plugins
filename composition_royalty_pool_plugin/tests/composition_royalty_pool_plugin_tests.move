@@ -282,7 +282,7 @@ fun direct_action_and_capless_plugin_have_identical_effects() {
     let direct_deposits =
         event::events_by_type<pool::RoyaltyDepositedEvent<SHARE, CURRENCY>>();
     assert_eq!(direct_deposits.length(), 1);
-    let (direct_pool, direct_value) = pool::deposited_event_fields(&direct_deposits[0]);
+    let (direct_pool, direct_value, _, _, _, _, _, _, _) = pool::deposited_event_fields(&direct_deposits[0]);
     assert_plugin_event_silence();
 
     plugin::install(&mut vault, &vault_admin_cap);
@@ -397,9 +397,9 @@ fun direct_action_and_capless_plugin_have_identical_effects() {
     assert_eq!(pool.cumulative_deposits(), 666);
     let deposits = event::events_by_type<pool::RoyaltyDepositedEvent<SHARE, CURRENCY>>();
     assert_eq!(deposits.length(), 2);
-    let (plugin_pool, plugin_value) = pool::deposited_event_fields(&deposits[0]);
-    assert_eq!(direct_pool, pool_id);
-    assert_eq!(plugin_pool, pool_id);
+    let (plugin_pool, plugin_value, _, _, _, _, _, _, _) = pool::deposited_event_fields(&deposits[0]);
+    assert_eq!(direct_pool, pool_id.to_address());
+    assert_eq!(plugin_pool, pool_id.to_address());
     assert_eq!(direct_value, 111);
     assert_eq!(plugin_value, 222);
 

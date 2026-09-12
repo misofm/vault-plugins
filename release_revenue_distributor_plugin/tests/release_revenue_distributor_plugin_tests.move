@@ -152,13 +152,11 @@ fun direct_action_and_capless_plugin_emit_identical_distributions() {
     let direct_summaries =
         event::events_by_type<action::ReleaseRevenueDistributedEvent<CURRENCY>>();
     assert_eq!(direct_summaries.length(), 1);
-    let (direct_release, direct_input, direct_distributed, direct_remainder) =
-        action::distribution_event_fields(&direct_summaries[0]);
+    let (direct_release, _, direct_input, direct_distributed, direct_remainder) = action::distribution_event_fields(&direct_summaries[0]);
     let direct_tracks =
         event::events_by_type<action::ReleaseTrackRevenueDistributedEvent<CURRENCY>>();
     assert_eq!(direct_tracks.length(), 2);
-    let (direct_track_release, direct_index, direct_recording, direct_amount) =
-        action::track_event_fields(&direct_tracks[0]);
+    let (direct_track_release, direct_index, _, direct_recording, _, _, direct_amount) = action::track_event_fields(&direct_tracks[0]);
 
     plugin::install(&mut vault, &vault_admin_cap);
     assert!(plugin::is_installed(&vault));
@@ -234,10 +232,9 @@ fun direct_action_and_capless_plugin_emit_identical_distributions() {
     let summaries =
         event::events_by_type<action::ReleaseRevenueDistributedEvent<CURRENCY>>();
     assert_eq!(summaries.length(), 1);
-    let (plugin_release, plugin_input, plugin_distributed, plugin_remainder) =
-        action::distribution_event_fields(&summaries[0]);
-    assert_eq!(direct_release, release_id);
-    assert_eq!(plugin_release, release_id);
+    let (plugin_release, _, plugin_input, plugin_distributed, plugin_remainder) = action::distribution_event_fields(&summaries[0]);
+    assert_eq!(direct_release, release_id.to_address());
+    assert_eq!(plugin_release, release_id.to_address());
     assert_eq!(direct_input, plugin_input);
     assert_eq!(direct_distributed, plugin_distributed);
     assert_eq!(direct_remainder, plugin_remainder);
@@ -247,8 +244,7 @@ fun direct_action_and_capless_plugin_emit_identical_distributions() {
 
     let tracks = event::events_by_type<action::ReleaseTrackRevenueDistributedEvent<CURRENCY>>();
     assert_eq!(tracks.length(), 2);
-    let (plugin_release, plugin_index, plugin_recording, plugin_amount) =
-        action::track_event_fields(&tracks[0]);
+    let (plugin_release, plugin_index, _, plugin_recording, _, _, plugin_amount) = action::track_event_fields(&tracks[0]);
     assert_eq!(direct_track_release, plugin_release);
     assert_eq!(direct_index, plugin_index);
     assert_eq!(direct_recording, plugin_recording);
@@ -339,13 +335,13 @@ fun nonempty_zero_coin_keeps_plugin_and_action_events() {
     assert_eq!(ids, vector[zero_coin_id.to_address()]);
     let tracks = event::events_by_type<action::ReleaseTrackRevenueDistributedEvent<CURRENCY>>();
     assert_eq!(tracks.length(), 2);
-    let (_, _, _, amount_a) = action::track_event_fields(&tracks[0]);
-    let (_, _, _, amount_b) = action::track_event_fields(&tracks[1]);
+    let (_, _, _, _, _, _, amount_a) = action::track_event_fields(&tracks[0]);
+    let (_, _, _, _, _, _, amount_b) = action::track_event_fields(&tracks[1]);
     assert_eq!(amount_a, 0);
     assert_eq!(amount_b, 0);
     let summaries = event::events_by_type<action::ReleaseRevenueDistributedEvent<CURRENCY>>();
     assert_eq!(summaries.length(), 1);
-    let (_, input, distributed, remainder) = action::distribution_event_fields(&summaries[0]);
+    let (_, _, input, distributed, remainder) = action::distribution_event_fields(&summaries[0]);
     assert_eq!(input, 0);
     assert_eq!(distributed, 0);
     assert_eq!(remainder, 0);
