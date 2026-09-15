@@ -126,7 +126,9 @@ fun release_plugin_to_recording_action_to_routed_composition_pool() {
     test_scenario::return_shared(root);
     let (recording_admin_cap, receipt) =
         recording_vault.borrow_as_admin(&recording_vault_admin_cap);
-    recording_pool_action::redeem_and_deposit(
+    // The Recording's settled snapshot cannot be populated in the unit VM, so
+    // the Action's settled-value helper stands in for `redeem_all_and_deposit`.
+    recording_pool_action::redeem_settled_value_and_deposit_for_testing(
         &mut recording,
         &recording_admin_cap,
         &mut recording_pool,

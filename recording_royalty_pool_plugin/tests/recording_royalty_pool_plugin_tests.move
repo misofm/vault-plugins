@@ -11,6 +11,7 @@ use recording_royalty_pool_plugin::recording_royalty_pool_plugin as plugin;
 use royalty_pool::pool::{Self, RoyaltyPool};
 use royalty_pool::stake::{Self, Stake};
 use std::unit_test::{assert_eq, destroy};
+use sui::accumulator::AccumulatorRoot;
 use sui::balance;
 use sui::coin::{Self, Coin};
 use sui::event;
@@ -126,7 +127,7 @@ fun direct_action_and_capless_plugin_have_identical_effects() {
         vector[plugin_ticket],
     );
     balance::create_for_testing<CURRENCY>(333).send_funds(recording_id.to_address());
-    plugin::redeem_and_deposit_for_testing(&mut vault, &mut recording, &mut pool, 333);
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut recording, &mut pool, 333);
 
     assert_eq!(pool.cumulative_deposits(), 666);
     let deposits = event::events_by_type<pool::RoyaltyDepositedEvent<SHARE, CURRENCY>>();
@@ -154,21 +155,29 @@ fun direct_action_and_capless_plugin_have_identical_effects() {
 
 #[test, expected_failure(abort_code = EPluginNotAuthorized, location = vault)]
 fun operation_before_install_aborts() {
-    let ctx = &mut tx_context::dummy();
-    let (mut recording, mut vault, vault_admin_cap) = fixture(ctx);
+    let mut scenario = test_scenario::begin(@0x0);
+    sui::accumulator::create_for_testing(scenario.ctx());
+    scenario.next_tx(@0xA);
+    let (mut recording, mut vault, vault_admin_cap) = fixture(scenario.ctx());
     let mut pool = new_pool(&mut recording, &mut vault, &vault_admin_cap);
-    plugin::redeem_and_deposit_for_testing(&mut vault, &mut recording, &mut pool, 1);
+    scenario.next_tx(STRANGER);
+    let root = scenario.take_shared<AccumulatorRoot>();
+    plugin::redeem_all_and_deposit_for_testing(&mut vault, &mut recording, &mut pool, &root);
     abort
 }
 
 #[test, expected_failure(abort_code = EPluginNotAuthorized, location = vault)]
 fun operation_after_uninstall_aborts() {
-    let ctx = &mut tx_context::dummy();
-    let (mut recording, mut vault, vault_admin_cap) = fixture(ctx);
+    let mut scenario = test_scenario::begin(@0x0);
+    sui::accumulator::create_for_testing(scenario.ctx());
+    scenario.next_tx(@0xA);
+    let (mut recording, mut vault, vault_admin_cap) = fixture(scenario.ctx());
     let mut pool = new_pool(&mut recording, &mut vault, &vault_admin_cap);
     plugin::install(&mut vault, &vault_admin_cap);
     plugin::uninstall(&mut vault, &vault_admin_cap);
-    plugin::redeem_and_deposit_for_testing(&mut vault, &mut recording, &mut pool, 1);
+    scenario.next_tx(STRANGER);
+    let root = scenario.take_shared<AccumulatorRoot>();
+    plugin::redeem_all_and_deposit_for_testing(&mut vault, &mut recording, &mut pool, &root);
     abort
 }
 
@@ -211,11 +220,30 @@ fun wrong_derived_pool_aborts() {
         );
     let mut wrong_pool = pool::new<SHARE, CURRENCY>(foreign.uid_mut(&foreign_cap));
     plugin::install(&mut vault, &vault_admin_cap);
-    plugin::redeem_and_deposit_for_testing(
+    plugin::redeem_settled_value_and_deposit_for_testing(
         &mut vault,
         &mut recording,
         &mut wrong_pool,
         1,
     );
+    abort
+}
+
+#[test, expected_failure(abort_code = EPoolNotDerivedFromParent, location = pool)]
+fun wrong_derived_pool_aborts_on_empty_snapshot() {
+    let mut scenario = test_scenario::begin(@0x0);
+    sui::accumulator::create_for_testing(scenario.ctx());
+    scenario.next_tx(@0xA);
+    let (mut recording, mut vault, vault_admin_cap) = fixture(scenario.ctx());
+    let (mut foreign, foreign_cap) =
+        recording::new_for_testing<FOREIGN_SHARE, COMPOSITION_SHARE>(
+            test_helpers::fake_id(scenario.ctx()),
+            scenario.ctx(),
+        );
+    let mut wrong_pool = pool::new<SHARE, CURRENCY>(foreign.uid_mut(&foreign_cap));
+    plugin::install(&mut vault, &vault_admin_cap);
+    scenario.next_tx(STRANGER);
+    let root = scenario.take_shared<AccumulatorRoot>();
+    plugin::redeem_all_and_deposit_for_testing(&mut vault, &mut recording, &mut wrong_pool, &root);
     abort
 }

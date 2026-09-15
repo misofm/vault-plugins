@@ -8,6 +8,7 @@ use musicos::recording::{Self, Recording, RecordingAdminCap};
 use recording_royalty_pool::recording_royalty_pool as action;
 use recording_royalty_pool_plugin::witness::{Self, Witness};
 use royalty_pool::pool::{Self, RoyaltyPool};
+use sui::accumulator::AccumulatorRoot;
 use sui::bag;
 use sui::coin::Coin;
 use sui::event::emit;
@@ -72,8 +73,10 @@ public struct RecordingCoinsDepositedEvent<phantom RecordingShare, phantom Compo
     coin_ids: vector<address>,
 }
 
-/// Financial and restored-custody snapshot after a successful accumulator
-/// redemption. `amount` is the exact requested Action value.
+/// Financial and restored-custody snapshot after an accumulator redemption
+/// that deposited funds. `amount` is the pool's cumulative-deposit delta,
+/// i.e. exactly what the Action redeemed and deposited. Not emitted when the
+/// crank was a no-op (zero snapshot or no registered stake).
 public struct RecordingFundsDepositedEvent<phantom RecordingShare, phantom CompositionShare, phantom Currency>
     has copy, drop {
     vault_id: address,
@@ -140,13 +143,26 @@ entry fun receive_and_deposit<RecordingShare, CompositionShare, Currency>(
     execute_receive_and_deposit(vault, recording, pool, coins)
 }
 
-entry fun redeem_and_deposit<RecordingShare, CompositionShare, Currency>(
+/// Permissionless crank: redeem the Recording's full settled accumulator
+/// snapshot into its canonical pool. Takes the framework `AccumulatorRoot`
+/// and no amount, so a caller cannot fragment settlement. A zero snapshot or
+/// a pool with no registered stake is a no-op that redeems nothing and emits
+/// no deposit event, so an item cranked in an earlier consensus commit, or an
+/// unstaked one, passes through a batched crank untouched.
+///
+/// The snapshot is constant within a commit (only settlement writes it), so
+/// cranking the same Recording twice in one PTB, or from two transactions in
+/// the same commit, withdraws it twice and the network fails that whole
+/// transaction with `InsufficientFundsForWithdraw` (not a Move abort).
+/// Include each object at most once per PTB and retry that status next
+/// commit.
+entry fun redeem_all_and_deposit<RecordingShare, CompositionShare, Currency>(
     vault: &mut Vault<RecordingAdminCap<RecordingShare>>,
     recording: &mut Recording<RecordingShare, CompositionShare>,
     pool: &mut RoyaltyPool<RecordingShare, Currency>,
-    value: u64,
+    root: &AccumulatorRoot,
 ) {
-    execute_redeem_and_deposit(vault, recording, pool, value)
+    execute_redeem_all_and_deposit(vault, recording, pool, root)
 }
 
 fun execute_receive_and_deposit<RecordingShare, CompositionShare, Currency>(
@@ -199,23 +215,56 @@ fun execute_receive_and_deposit<RecordingShare, CompositionShare, Currency>(
     });
 }
 
-fun execute_redeem_and_deposit<RecordingShare, CompositionShare, Currency>(
+fun execute_redeem_all_and_deposit<RecordingShare, CompositionShare, Currency>(
     vault: &mut Vault<RecordingAdminCap<RecordingShare>>,
     recording: &mut Recording<RecordingShare, CompositionShare>,
     pool: &mut RoyaltyPool<RecordingShare, Currency>,
-    value: u64,
+    root: &AccumulatorRoot,
 ) {
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
+    let (
+        vault_id,
+        cap_id,
+        recording_id,
+        composition_id,
+        pool_id,
+        pool_balance_before,
+        staked_shares,
+        reward_per_share_before,
+        carry_before,
+        cumulative_deposits_before,
+    ) = observe_borrow(vault, &cap, recording, pool);
+    action::redeem_all_and_deposit(recording, &cap, pool, root);
+    vault.put_back(cap, receipt);
+    report_deposit<RecordingShare, CompositionShare, Currency>(
+        vault,
+        pool,
+        vault_id,
+        cap_id,
+        recording_id,
+        composition_id,
+        pool_id,
+        pool_balance_before,
+        staked_shares,
+        reward_per_share_before,
+        carry_before,
+        cumulative_deposits_before,
+    );
+}
+
+/// Emit the custody event for the leased cap and return the identities and
+/// pool metrics observed before the Action runs, for `report_deposit`.
+fun observe_borrow<RecordingShare, CompositionShare, Currency>(
+    vault: &Vault<RecordingAdminCap<RecordingShare>>,
+    cap: &RecordingAdminCap<RecordingShare>,
+    recording: &Recording<RecordingShare, CompositionShare>,
+    pool: &RoyaltyPool<RecordingShare, Currency>,
+): (address, address, address, address, address, u64, u64, u256, u128, u128) {
     let vault_id = object::id(vault).to_address();
-    let cap_id = object::id(&cap).to_address();
+    let cap_id = object::id(cap).to_address();
     let recording_id = object::id(recording).to_address();
     let composition_id = recording::composition_id(recording).to_address();
     let pool_id = object::id(pool).to_address();
-    let pool_balance_before = pool.balance().value();
-    let staked_shares = pool.staked_shares();
-    let reward_per_share_before = pool.cumulative_reward_per_share();
-    let carry_before = pool.carry();
-    let cumulative_deposits_before = pool.cumulative_deposits();
     emit(RecordingVaultCapabilityBorrowedEvent<RecordingShare, CompositionShare, Currency> {
         vault_id,
         cap_id,
@@ -225,8 +274,41 @@ fun execute_redeem_and_deposit<RecordingShare, CompositionShare, Currency>(
         active: vault.is_active(),
         capability_available: false,
     });
-    action::redeem_and_deposit(recording, &cap, pool, value);
-    vault.put_back(cap, receipt);
+    (
+        vault_id,
+        cap_id,
+        recording_id,
+        composition_id,
+        pool_id,
+        pool.balance().value(),
+        pool.staked_shares(),
+        pool.cumulative_reward_per_share(),
+        pool.carry(),
+        pool.cumulative_deposits(),
+    )
+}
+
+/// Emit the deposit snapshot only when the Action actually deposited. The
+/// pool's cumulative deposits are monotonic and every deposit is positive, so
+/// their delta is exactly what the pool received from this crank (one
+/// deposit, so it fits `u64`); an unchanged total means the crank was a
+/// no-op. The event never re-reads the accumulator root.
+fun report_deposit<RecordingShare, CompositionShare, Currency>(
+    vault: &Vault<RecordingAdminCap<RecordingShare>>,
+    pool: &RoyaltyPool<RecordingShare, Currency>,
+    vault_id: address,
+    cap_id: address,
+    recording_id: address,
+    composition_id: address,
+    pool_id: address,
+    pool_balance_before: u64,
+    staked_shares: u64,
+    reward_per_share_before: u256,
+    carry_before: u128,
+    cumulative_deposits_before: u128,
+) {
+    let deposited = pool.cumulative_deposits() - cumulative_deposits_before;
+    if (deposited == 0) return;
     emit(RecordingFundsDepositedEvent<RecordingShare, CompositionShare, Currency> {
         vault_id,
         cap_id,
@@ -244,7 +326,7 @@ fun execute_redeem_and_deposit<RecordingShare, CompositionShare, Currency>(
         cumulative_deposits_after: pool.cumulative_deposits(),
         active: vault.is_active(),
         capability_available: true,
-        amount: value,
+        amount: deposited as u64,
     });
 }
 
@@ -259,13 +341,55 @@ public fun receive_and_deposit_for_testing<RecordingShare, CompositionShare, Cur
 }
 
 #[test_only]
-public fun redeem_and_deposit_for_testing<RecordingShare, CompositionShare, Currency>(
+public fun redeem_all_and_deposit_for_testing<RecordingShare, CompositionShare, Currency>(
+    vault: &mut Vault<RecordingAdminCap<RecordingShare>>,
+    recording: &mut Recording<RecordingShare, CompositionShare>,
+    pool: &mut RoyaltyPool<RecordingShare, Currency>,
+    root: &AccumulatorRoot,
+) {
+    redeem_all_and_deposit(vault, recording, pool, root)
+}
+
+/// Run the production borrow -> observe -> Action -> put_back -> report
+/// sequence (the same `observe_borrow`/`report_deposit` code) against the
+/// Action's private settled-value helper, since the unit VM cannot settle a
+/// positive `AccumulatorRoot` snapshot.
+#[test_only]
+public fun redeem_settled_value_and_deposit_for_testing<RecordingShare, CompositionShare, Currency>(
     vault: &mut Vault<RecordingAdminCap<RecordingShare>>,
     recording: &mut Recording<RecordingShare, CompositionShare>,
     pool: &mut RoyaltyPool<RecordingShare, Currency>,
     value: u64,
 ) {
-    redeem_and_deposit(vault, recording, pool, value)
+    let (cap, receipt) = vault.borrow_as_plugin(witness::new());
+    let (
+        vault_id,
+        cap_id,
+        recording_id,
+        composition_id,
+        pool_id,
+        pool_balance_before,
+        staked_shares,
+        reward_per_share_before,
+        carry_before,
+        cumulative_deposits_before,
+    ) = observe_borrow(vault, &cap, recording, pool);
+    action::redeem_settled_value_and_deposit_for_testing(recording, &cap, pool, value);
+    vault.put_back(cap, receipt);
+    report_deposit<RecordingShare, CompositionShare, Currency>(
+        vault,
+        pool,
+        vault_id,
+        cap_id,
+        recording_id,
+        composition_id,
+        pool_id,
+        pool_balance_before,
+        staked_shares,
+        reward_per_share_before,
+        carry_before,
+        cumulative_deposits_before,
+    );
 }
 
 // === Test Functions ===
