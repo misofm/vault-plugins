@@ -7,8 +7,13 @@ An administrator installs the package-local `witness::Witness` on a
 entry endpoints to receive Release coins or redeem its full canonical settled
 snapshot and execute the immutable tracklist distribution. The redemption
 entry takes `&AccumulatorRoot` and no amount, so a caller cannot fragment
-settlement into dust-sized distributions. An empty snapshot is an idempotent
-no-op; excess and later-settled funds remain for a later crank.
+settlement into dust-sized distributions. An empty snapshot is a no-op;
+excess and later-settled funds remain for a later crank. The no-op holds only
+across consensus commits: the settled snapshot is constant within a commit, so
+cranking the same Release twice in one PTB, or from two crankers in the same
+commit, fails that whole transaction with `InsufficientFundsForWithdraw` (not a
+Move abort). Include each Release at most once per PTB and retry that status
+next commit.
 
 Each executor performs only `borrow_as_plugin -> matching Action -> put_back`.
 The Action, not this plugin, owns split arithmetic, recipient derivation,
