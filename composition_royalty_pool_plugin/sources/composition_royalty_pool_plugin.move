@@ -9,47 +9,15 @@ use composition_royalty_pool_plugin::witness::{Self, Witness};
 use musicos::composition::{Composition, CompositionAdminCap};
 use royalty_pool::pool::RoyaltyPool;
 use sui::accumulator::AccumulatorRoot;
-use sui::bag;
 use sui::coin::Coin;
-use sui::event::emit;
 use sui::transfer::Receiving;
 use vault::vault::{Vault, VaultAdminCap};
-
-/// Snapshot of this plugin's authorization record after installation.
-public struct CompositionRoyaltyPoolPluginInstalledEvent<phantom CompositionShare>
-    has copy, drop {
-    vault_id: address,
-    cap_id: address,
-    vault_admin_cap_id: address,
-    authorized_plugins_id: address,
-    authorized_plugin_count: u64,
-    installed: bool,
-}
-
-/// Snapshot of this plugin's authorization record after uninstallation.
-public struct CompositionRoyaltyPoolPluginUninstalledEvent<phantom CompositionShare>
-    has copy, drop {
-    vault_id: address,
-    cap_id: address,
-    vault_admin_cap_id: address,
-    authorized_plugins_id: address,
-    authorized_plugin_count: u64,
-    installed: bool,
-}
 
 public fun install<CompositionShare>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
     vault.authorize_plugin(vault_admin_cap, witness::new());
-    emit(CompositionRoyaltyPoolPluginInstalledEvent<CompositionShare> {
-        vault_id: object::id(vault).to_address(),
-        cap_id: vault.cap_id().to_address(),
-        vault_admin_cap_id: object::id(vault_admin_cap).to_address(),
-        authorized_plugins_id: object::id(vault.authorized_plugins()).to_address(),
-        authorized_plugin_count: bag::length(vault.authorized_plugins()),
-        installed: vault.is_plugin_authorized<CompositionAdminCap<CompositionShare>, Witness>(),
-    });
 }
 
 public fun uninstall<CompositionShare>(
@@ -57,14 +25,6 @@ public fun uninstall<CompositionShare>(
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
     vault.revoke_plugin<CompositionAdminCap<CompositionShare>, Witness>(vault_admin_cap);
-    emit(CompositionRoyaltyPoolPluginUninstalledEvent<CompositionShare> {
-        vault_id: object::id(vault).to_address(),
-        cap_id: vault.cap_id().to_address(),
-        vault_admin_cap_id: object::id(vault_admin_cap).to_address(),
-        authorized_plugins_id: object::id(vault.authorized_plugins()).to_address(),
-        authorized_plugin_count: bag::length(vault.authorized_plugins()),
-        installed: vault.is_plugin_authorized<CompositionAdminCap<CompositionShare>, Witness>(),
-    });
 }
 
 public fun is_installed<CompositionShare>(
@@ -159,34 +119,4 @@ public fun redeem_settled_value_and_deposit_for_testing<CompositionShare, Curren
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     action::redeem_settled_value_and_deposit_for_testing(composition, &cap, pool, value);
     vault.put_back(cap, receipt);
-}
-
-// === Test Functions ===
-
-#[test_only]
-public fun installed_event_fields<CompositionShare>(
-    event: &CompositionRoyaltyPoolPluginInstalledEvent<CompositionShare>,
-): (address, address, address, address, u64, bool) {
-    (
-        event.vault_id,
-        event.cap_id,
-        event.vault_admin_cap_id,
-        event.authorized_plugins_id,
-        event.authorized_plugin_count,
-        event.installed,
-    )
-}
-
-#[test_only]
-public fun uninstalled_event_fields<CompositionShare>(
-    event: &CompositionRoyaltyPoolPluginUninstalledEvent<CompositionShare>,
-): (address, address, address, address, u64, bool) {
-    (
-        event.vault_id,
-        event.cap_id,
-        event.vault_admin_cap_id,
-        event.authorized_plugins_id,
-        event.authorized_plugin_count,
-        event.installed,
-    )
 }

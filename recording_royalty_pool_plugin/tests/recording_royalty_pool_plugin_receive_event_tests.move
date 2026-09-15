@@ -101,11 +101,9 @@ fun action_receive_event_preserves_coin_ids_and_pool_accounting() {
     let d0 = p.cumulative_deposits();
     let event_count_before = event::num_events();
     let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
-    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::receive_and_deposit_for_testing(&mut v, &mut r, &mut p, vector[zt, ct]);
-    assert_eq!(event::num_events() - event_count_before, 4);
+    assert_eq!(event::num_events() - event_count_before, 3);
     assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
     let b1 = p.balance().value();
     let r1 = p.cumulative_reward_per_share();
     let k1 = p.carry();

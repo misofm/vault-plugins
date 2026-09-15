@@ -19,9 +19,10 @@ most once per PTB and retry that status next commit.
 Each executor performs only `borrow_as_plugin -> matching Action -> put_back`.
 The plugin exposes no pool creation or address derivation; call the public
 Action directly for `new_pool` and `pool_address`. All validation, arithmetic,
-transfers, and business rules remain in the Action or royalty-pool core. The
-plugin emits lifecycle events for installation and uninstallation; operation
-results come from the underlying Vault, Action, and royalty-pool events.
+transfers, and business rules remain in the Action or royalty-pool core.
+Installation and uninstallation are represented by the Vault's typed
+`PluginAuthorizedEvent` and `PluginRevokedEvent`; operation results come from
+the underlying Vault, Action, and royalty-pool events.
 
 Operational entries return `()` and accept no Vault admin cap, address,
 recipient, destination, sender, or transaction context. Test-only public

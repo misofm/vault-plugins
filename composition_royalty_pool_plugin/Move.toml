@@ -5,8 +5,8 @@ license = "Apache 2.0"
 authors = ["Miso Labs, Inc. (build@miso.network)"]
 
 [dependencies]
-composition_royalty_pool = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_royalty_pool", rev = "92d08863f074f62349cf941f4bfd1ef500142907" }
-vault = { git = "https://github.com/misofm/vault.git", rev = "70c2d3a51fa7f4ce8ad471db8ec51a841dda9e42" }
+composition_royalty_pool = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_royalty_pool", rev = "85e8df0e620535e446583a87aff840eaef1079f3" }
+vault = { git = "https://github.com/misofm/vault.git", rev = "7b77d32effcf533ed68dd332f18d8e975d91f3f1" }
 musicos = { git = "https://github.com/misofm/musicos.git", rev = "e56c4cbc0d9673f6422e365364b128d0813341ac" }
-royalty_pool = { git = "https://github.com/misofm/royalty-pool.git", rev = "3fc2eee57a128874f9405cf218c613627824dc8e" }
+royalty_pool = { git = "https://github.com/misofm/royalty-pool.git", rev = "7b140a56940981def6eaadb30ea187b81f4f9b04" }
 hikida = { git = "https://github.com/unconfirmedlabs/hikida.git", rev = "c91d6a0f536a5f1457b342a8838fc1d7ba09212e", modes = ["test"] }

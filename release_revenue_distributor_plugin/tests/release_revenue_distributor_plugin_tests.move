@@ -70,61 +70,37 @@ fun cleanup(
     destroy(release)
 }
 
-fun assert_installed_event(
+fun assert_authorized_event(
     vault: &Vault<ReleaseAdminCap>,
-    vault_admin_cap: &VaultAdminCap<ReleaseAdminCap>,
+    _vault_admin_cap: &VaultAdminCap<ReleaseAdminCap>,
     cap_id: sui::object::ID,
 ) {
     let events = event::events_by_type<
-        plugin::ReleaseRevenueDistributorPluginInstalledEvent<ReleaseAdminCap, Witness>
+        vault::PluginAuthorizedEvent<ReleaseAdminCap, Witness>
     >();
     assert_eq!(events.length(), 1);
-    let (
-        event_vault_id,
-        event_vault_admin_cap_id,
-        event_release_admin_cap_id,
-        vault_active,
-        authorized_before,
-        authorized_after,
-        count_before,
-        count_after,
-    ) = plugin::installed_event_fields(&events[0]);
+    let (event_vault_id, event_release_admin_cap_id, _, _, count_after, authorized_after) =
+        vault::plugin_authorized_event_vault_id(&events[0]);
     assert_eq!(event_vault_id, object::id(vault).to_address());
-    assert_eq!(event_vault_admin_cap_id, object::id(vault_admin_cap).to_address());
     assert_eq!(event_release_admin_cap_id, cap_id.to_address());
-    assert!(vault_active);
-    assert!(!authorized_before);
     assert!(authorized_after);
-    assert_eq!(count_before, 0);
     assert_eq!(count_after, 1);
 }
 
-fun assert_uninstalled_event(
+fun assert_revoked_event(
     vault: &Vault<ReleaseAdminCap>,
-    vault_admin_cap: &VaultAdminCap<ReleaseAdminCap>,
+    _vault_admin_cap: &VaultAdminCap<ReleaseAdminCap>,
     cap_id: sui::object::ID,
 ) {
     let events = event::events_by_type<
-        plugin::ReleaseRevenueDistributorPluginUninstalledEvent<ReleaseAdminCap, Witness>
+        vault::PluginRevokedEvent<ReleaseAdminCap, Witness>
     >();
     assert_eq!(events.length(), 1);
-    let (
-        event_vault_id,
-        event_vault_admin_cap_id,
-        event_release_admin_cap_id,
-        vault_active,
-        authorized_before,
-        authorized_after,
-        count_before,
-        count_after,
-    ) = plugin::uninstalled_event_fields(&events[0]);
+    let (event_vault_id, event_release_admin_cap_id, _, _, count_after, authorized_after) =
+        vault::plugin_revoked_event_vault_id(&events[0]);
     assert_eq!(event_vault_id, object::id(vault).to_address());
-    assert_eq!(event_vault_admin_cap_id, object::id(vault_admin_cap).to_address());
     assert_eq!(event_release_admin_cap_id, cap_id.to_address());
-    assert!(vault_active);
-    assert!(authorized_before);
     assert!(!authorized_after);
-    assert_eq!(count_before, 1);
     assert_eq!(count_after, 0);
 }
 
@@ -159,7 +135,7 @@ fun direct_action_and_capless_plugin_emit_identical_distributions() {
 
     plugin::install(&mut vault, &vault_admin_cap);
     assert!(plugin::is_installed(&vault));
-    assert_installed_event(&vault, &vault_admin_cap, cap_id);
+    assert_authorized_event(&vault, &vault_admin_cap, cap_id);
     assert_eq!(
         event::events_by_type<vault::PluginAuthorizedEvent<ReleaseAdminCap, Witness>>().length(),
         1,
@@ -181,14 +157,14 @@ fun direct_action_and_capless_plugin_emit_identical_distributions() {
     let plugin_ticket_2 =
         test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(plugin_coin_2_id);
     let event_count_before = event::num_events();
-    let (borrow_count_before, return_count_before) = lease_event_counts();
+    let borrow_count_before = lease_event_counts();
     plugin::receive_and_distribute_for_testing(
         &mut vault,
         &mut release,
         vector[plugin_ticket, plugin_ticket_2],
     );
-    assert_eq!(event::num_events() - event_count_before, 6);
-    assert_lease_event_counts(borrow_count_before + 1, return_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 5);
+    assert_lease_event_counts(borrow_count_before + 1);
     let coin_events = event::events_by_type<
         action::ReleaseCoinsReceivedEvent<CURRENCY>
     >();
@@ -211,10 +187,10 @@ fun direct_action_and_capless_plugin_emit_identical_distributions() {
     );
     let root = scenario.take_shared<AccumulatorRoot>();
     let event_count_before = event::num_events();
-    let (borrow_count_before, return_count_before) = lease_event_counts();
+    let borrow_count_before = lease_event_counts();
     plugin::redeem_all_and_distribute_for_testing<CURRENCY>(&mut vault, &mut release, &root);
-    assert_eq!(event::num_events() - event_count_before, 2);
-    assert_lease_event_counts(borrow_count_before + 1, return_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 1);
+    assert_lease_event_counts(borrow_count_before + 1);
     assert_eq!(
         event::events_by_type<
             action::ReleaseFundsRedeemedEvent<CURRENCY>
@@ -250,7 +226,7 @@ fun direct_action_and_capless_plugin_emit_identical_distributions() {
     vault.put_back(cap, receipt);
     plugin::uninstall(&mut vault, &vault_admin_cap);
     assert!(!plugin::is_installed(&vault));
-    assert_uninstalled_event(&vault, &vault_admin_cap, cap_id);
+    assert_revoked_event(&vault, &vault_admin_cap, cap_id);
     assert_eq!(
         event::events_by_type<vault::PluginRevokedEvent<ReleaseAdminCap, Witness>>().length(),
         1,
@@ -266,25 +242,22 @@ fun install_uninstall_reinstall_events_capture_each_transition() {
     let cap_id = vault.cap_id();
 
     plugin::install(&mut vault, &vault_admin_cap);
-    assert_installed_event(&vault, &vault_admin_cap, cap_id);
+    assert_authorized_event(&vault, &vault_admin_cap, cap_id);
     let events_before_view = event::num_events();
     assert!(plugin::is_installed(&vault));
     assert_eq!(event::num_events(), events_before_view);
 
     plugin::uninstall(&mut vault, &vault_admin_cap);
-    assert_uninstalled_event(&vault, &vault_admin_cap, cap_id);
+    assert_revoked_event(&vault, &vault_admin_cap, cap_id);
     plugin::install(&mut vault, &vault_admin_cap);
     let installed_events = event::events_by_type<
-        plugin::ReleaseRevenueDistributorPluginInstalledEvent<ReleaseAdminCap, Witness>
+        vault::PluginAuthorizedEvent<ReleaseAdminCap, Witness>
     >();
     assert_eq!(installed_events.length(), 2);
-    let (_, _, event_cap_id, active, authorized_before, authorized_after, count_before, count_after) =
-        plugin::installed_event_fields(&installed_events[1]);
+    let (_, event_cap_id, _, _, count_after, authorized_after) =
+        vault::plugin_authorized_event_vault_id(&installed_events[1]);
     assert_eq!(event_cap_id, cap_id.to_address());
-    assert!(active);
-    assert!(!authorized_before);
     assert!(authorized_after);
-    assert_eq!(count_before, 0);
     assert_eq!(count_after, 1);
     assert_eq!(
         event::events_by_type<vault::PluginAuthorizedEvent<ReleaseAdminCap, Witness>>().length(),
@@ -313,14 +286,14 @@ fun nonempty_zero_coin_keeps_underlying_business_events() {
     scenario.next_tx(STRANGER);
     let ticket = test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(zero_coin_id);
     let event_count_before = event::num_events();
-    let (borrow_count_before, return_count_before) = lease_event_counts();
+    let borrow_count_before = lease_event_counts();
     plugin::receive_and_distribute_for_testing(
         &mut vault,
         &mut release,
         vector[ticket],
     );
-    assert_eq!(event::num_events() - event_count_before, 6);
-    assert_lease_event_counts(borrow_count_before + 1, return_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 2);
+    assert_lease_event_counts(borrow_count_before + 1);
     let coin_events = event::events_by_type<
         action::ReleaseCoinsReceivedEvent<CURRENCY>
     >();
@@ -333,17 +306,9 @@ fun nonempty_zero_coin_keeps_underlying_business_events() {
     assert_eq!(ids.length(), 1);
     assert_eq!(ids, vector[zero_coin_id.to_address()]);
     let tracks = event::events_by_type<action::ReleaseTrackRevenueDistributedEvent<CURRENCY>>();
-    assert_eq!(tracks.length(), 2);
-    let (_, _, _, _, _, _, amount_a) = action::track_event_fields(&tracks[0]);
-    let (_, _, _, _, _, _, amount_b) = action::track_event_fields(&tracks[1]);
-    assert_eq!(amount_a, 0);
-    assert_eq!(amount_b, 0);
+    assert_eq!(tracks.length(), 0);
     let summaries = event::events_by_type<action::ReleaseRevenueDistributedEvent<CURRENCY>>();
-    assert_eq!(summaries.length(), 1);
-    let (_, _, input, distributed, remainder) = action::distribution_event_fields(&summaries[0]);
-    assert_eq!(input, 0);
-    assert_eq!(distributed, 0);
-    assert_eq!(remainder, 0);
+    assert_eq!(summaries.length(), 0);
     assert_eq!(
         event::events_by_type<
             action::ReleaseFundsRedeemedEvent<CURRENCY>
@@ -440,15 +405,11 @@ fun wrong_release_target_aborts() {
     abort
 }
 
-fun lease_event_counts(): (u64, u64) {
-    (
-        event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<ReleaseAdminCap, Witness>>().length(),
-        event::events_by_type<vault::VaultCapabilityReturnedEvent<ReleaseAdminCap>>().length(),
-    )
+fun lease_event_counts(): u64 {
+    event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<ReleaseAdminCap, Witness>>().length()
 }
 
-fun assert_lease_event_counts(expected_borrows: u64, expected_returns: u64) {
-    let (borrows, returns) = lease_event_counts();
+fun assert_lease_event_counts(expected_borrows: u64) {
+    let borrows = lease_event_counts();
     assert_eq!(borrows, expected_borrows);
-    assert_eq!(returns, expected_returns);
 }

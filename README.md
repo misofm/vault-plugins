@@ -46,17 +46,19 @@ Installation controls whether the package witness may lease the raw cap; it
 does not authorize the transaction sender. Anyone can crank an installed
 operation, and the Action fixes the target and funds flow.
 
-Plugins emit only install and uninstall lifecycle events. Operation results
-remain observable through the underlying Vault, Action, royalty-pool, and
-routed-stake events, which are the canonical source for custody and business
-facts. Plugins do not re-read state to create wrapper notifications.
+Installation and uninstallation rely on the Vault's typed
+`PluginAuthorizedEvent` and `PluginRevokedEvent`; the plugin packages emit no
+duplicate lifecycle wrappers. Operation results remain observable through the
+underlying Vault, Action, royalty-pool, and routed-stake events, which are the
+canonical source for custody and business facts. Plugins do not re-read state
+to create wrapper notifications.
 
 Consumers migrating from earlier plugin generations should read capability
 usage from the Vault events and deposit/distribution results from the matching
 Action and extension events. The plugin-specific borrow, coin-deposit,
 fund-deposit, coin-distribution, and fund-distribution event types are removed;
 their similarly named Action events remain. Operational entry signatures and
-install/uninstall lifecycle events are unchanged. Historical event decoding
+install/uninstall signatures and `is_installed` behavior are unchanged. Historical event decoding
 must continue to use the schema for the originating package generation.
 
 Every redemption crank (`redeem_all_and_distribute` for a Release,

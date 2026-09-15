@@ -7,6 +7,7 @@ module recording_royalty_pool_plugin::recording_royalty_pool_plugin_install_even
 use musicos::recording::{Self, Recording, RecordingAdminCap};
 use musicos::test_helpers;
 use recording_royalty_pool_plugin::recording_royalty_pool_plugin as plugin;
+use recording_royalty_pool_plugin::witness::Witness;
 use std::unit_test::{assert_eq, destroy};
 use sui::event;
 use vault::vault::{Self, Vault, VaultAdminCap};
@@ -56,9 +57,9 @@ fun install_uninstall_events_and_silent_status() {
     assert_eq!(event::num_events(), n);
 
     plugin::install(&mut v, &a);
-    let es = event::events_by_type<plugin::RecordingRoyaltyPoolPluginInstalledEvent<SHARE>>();
+    let es = event::events_by_type<vault::PluginAuthorizedEvent<RecordingAdminCap<SHARE>, Witness>>();
     assert_eq!(es.length(), 1);
-    let (x, y, z, w, q, b) = plugin::installed_event_fields(&es[0]);
+    let (x, y, z, w, q, b) = vault::plugin_authorized_event_vault_id(&es[0]);
     assert_eq!(x, vi);
     assert_eq!(y, ci);
     assert_eq!(z, ai);
@@ -67,9 +68,9 @@ fun install_uninstall_events_and_silent_status() {
     assert!(b);
 
     plugin::uninstall(&mut v, &a);
-    let es = event::events_by_type<plugin::RecordingRoyaltyPoolPluginUninstalledEvent<SHARE>>();
+    let es = event::events_by_type<vault::PluginRevokedEvent<RecordingAdminCap<SHARE>, Witness>>();
     assert_eq!(es.length(), 1);
-    let (x, y, z, w, q, b) = plugin::uninstalled_event_fields(&es[0]);
+    let (x, y, z, w, q, b) = vault::plugin_revoked_event_vault_id(&es[0]);
     assert_eq!(x, vi);
     assert_eq!(y, ci);
     assert_eq!(z, ai);
