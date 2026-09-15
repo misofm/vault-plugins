@@ -14,6 +14,7 @@ use std::unit_test::{assert_eq, destroy};
 use sui::accumulator::AccumulatorRoot;
 use sui::balance;
 use sui::event;
+use recording_royalty_pool_plugin::witness::Witness;
 use sui::test_scenario;
 use vault::vault::{Self, Vault, VaultAdminCap};
 
@@ -59,7 +60,7 @@ fun clean(
     destroy(r)
 }
 
-/// The production observe -> Action -> put_back -> report sequence with a
+/// The borrow -> Action -> put_back sequence with a
 /// positive settled value: exact before/after pool metrics, restored custody,
 /// and `amount` equal to the settled snapshot.
 #[test]
@@ -81,27 +82,29 @@ fun redeem_event_snapshots_funds_and_restored_custody() {
     let r0 = p.cumulative_reward_per_share();
     let k0 = p.carry();
     let d0 = p.cumulative_deposits();
+    let event_count_before = event::num_events();
+    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
+    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut v, &mut r, &mut p, 333);
+    assert_eq!(event::num_events() - event_count_before, 4);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
     let b1 = p.balance().value();
     let r1 = p.cumulative_reward_per_share();
     let k1 = p.carry();
     let d1 = p.cumulative_deposits();
 
-    let es = event::events_by_type<plugin::RecordingVaultCapabilityBorrowedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
+    let es = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>();
     assert_eq!(es.length(), 1);
-    let (x, y, z, w, q, b, c) = plugin::borrowed_event_fields(&es[0]);
+    let (x, y, b, c) = vault::capability_borrowed_by_plugin_event_fields(&es[0]);
     assert_eq!(x, object::id(&v).to_address());
     assert_eq!(y, capid.to_address());
-    assert_eq!(z, rid.to_address());
-    assert_eq!(w, cid.to_address());
-    assert_eq!(q, pid.to_address());
     assert!(b);
     assert!(!c);
 
-    let es = event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
+    let es = event::events_by_type<action::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
     assert_eq!(es.length(), 1);
-    let (x, y, z, w, q, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, ab, ac) = plugin::funds_deposited_event_fields(&es[0]);
-    assert_eq!(x, object::id(&v).to_address());
+    let (z, w, y, q, ac, a0, a1, a2, a3, a4, a5, a6, a7, a8) = action::funds_deposited_event_fields(&es[0]);
     assert_eq!(y, capid.to_address());
     assert_eq!(z, rid.to_address());
     assert_eq!(w, cid.to_address());
@@ -115,8 +118,6 @@ fun redeem_event_snapshots_funds_and_restored_custody() {
     assert_eq!(a6, k1);
     assert_eq!(a7, d0);
     assert_eq!(a8, d1);
-    assert!(a9);
-    assert!(ab);
     assert_eq!(ac, 333);
 
     let reward = p.claim_rewards(&mut st);
@@ -130,9 +131,9 @@ fun redeem_event_snapshots_funds_and_restored_custody() {
 }
 
 /// A zero settled snapshot through the real entry: the cap is leased and
-/// returned (borrow event only), nothing is deposited, no funds event.
+/// returned (generic borrow and return events only), nothing is deposited, no funds event.
 #[test]
-fun zero_snapshot_crank_emits_only_the_borrow_event() {
+fun zero_snapshot_crank_emits_only_custody_events() {
     let mut s = test_scenario::begin(@0x0);
     sui::accumulator::create_for_testing(s.ctx());
     s.next_tx(@0xA);
@@ -144,10 +145,22 @@ fun zero_snapshot_crank_emits_only_the_borrow_event() {
 
     s.next_tx(@0x51);
     let root = s.take_shared<AccumulatorRoot>();
+    let event_count_before = event::num_events();
+    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
+    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::redeem_all_and_deposit_for_testing(&mut v, &mut r, &mut p, &root);
+    assert_eq!(event::num_events() - event_count_before, 2);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
+    let event_count_before = event::num_events();
+    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
+    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::redeem_all_and_deposit_for_testing(&mut v, &mut r, &mut p, &root);
-    assert_eq!(event::events_by_type<plugin::RecordingVaultCapabilityBorrowedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 2);
-    assert_eq!(event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 0);
+    assert_eq!(event::num_events() - event_count_before, 2);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), 2);
+    assert_eq!(event::events_by_type<action::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 0);
     assert_eq!(event::events_by_type<pool::RoyaltyDepositedEvent<SHARE, CURRENCY>>().length(), 0);
     assert_eq!(p.cumulative_deposits(), 0);
     let (c, b) = v.borrow_as_admin(&a);
@@ -173,18 +186,30 @@ fun zero_staker_crank_is_a_no_op_until_a_stake_registers() {
     plugin::install(&mut v, &a);
     balance::create_for_testing<CURRENCY>(333).send_funds(rid.to_address());
 
+    let event_count_before = event::num_events();
+    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
+    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut v, &mut r, &mut p, 333);
-    assert_eq!(event::events_by_type<plugin::RecordingVaultCapabilityBorrowedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 1);
-    assert_eq!(event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 0);
+    assert_eq!(event::num_events() - event_count_before, 2);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), 1);
+    assert_eq!(event::events_by_type<action::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 0);
     assert_eq!(p.cumulative_deposits(), 0);
     assert_eq!(p.balance().value(), 0);
 
     let mut st = stake::new(balance::create_for_testing<SHARE>(100), ctx);
     p.register_stake(&mut st);
+    let event_count_before = event::num_events();
+    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
+    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut v, &mut r, &mut p, 333);
-    let es = event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
+    assert_eq!(event::num_events() - event_count_before, 4);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
+    let es = event::events_by_type<action::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
     assert_eq!(es.length(), 1);
-    let (_, _, _, _, _, b0, b1, q, _, _, _, _, d0, d1, _, _, amount) = plugin::funds_deposited_event_fields(&es[0]);
+    let (_, _, _, _, amount, b0, b1, q, _, _, _, _, d0, d1) = action::funds_deposited_event_fields(&es[0]);
     assert_eq!(b0, 0);
     assert_eq!(b1, 333);
     assert_eq!(q, 100);
@@ -228,17 +253,34 @@ fun batch_with_no_op_items_still_deposits_the_funded_staked_recording() {
 
     s.next_tx(@0x51);
     let root = s.take_shared<AccumulatorRoot>();
+    let event_count_before = event::num_events();
+    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
+    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut va, &mut ra, &mut pa, 1_000);
+    assert_eq!(event::num_events() - event_count_before, 4);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
+    let event_count_before = event::num_events();
+    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
+    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::redeem_all_and_deposit_for_testing(&mut vb, &mut rb, &mut pb, &root);
+    assert_eq!(event::num_events() - event_count_before, 2);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
+    let event_count_before = event::num_events();
+    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
+    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut vc, &mut rc, &mut pc, 250);
-    let es = event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
+    assert_eq!(event::num_events() - event_count_before, 2);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
+    let es = event::events_by_type<action::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
     assert_eq!(es.length(), 1);
-    let (x, _, z, _, q, _, _, _, _, _, _, _, _, _, _, _, amount) = plugin::funds_deposited_event_fields(&es[0]);
-    assert_eq!(x, object::id(&va).to_address());
+    let (z, _, _, q, amount, _, _, _, _, _, _, _, _, _) = action::funds_deposited_event_fields(&es[0]);
     assert_eq!(z, object::id(&ra).to_address());
     assert_eq!(q, object::id(&pa).to_address());
     assert_eq!(amount, 1_000);
-    assert_eq!(event::events_by_type<plugin::RecordingVaultCapabilityBorrowedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 3);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), 3);
     assert_eq!(pa.cumulative_deposits(), 1_000);
     assert_eq!(pb.cumulative_deposits(), 0);
     assert_eq!(pc.cumulative_deposits(), 0);
@@ -282,11 +324,23 @@ fun duplicate_crank_in_one_tx_is_not_a_no_op() {
     let mut st = stake::new(balance::create_for_testing<SHARE>(100), ctx);
     p.register_stake(&mut st);
     plugin::install(&mut v, &a);
+    let event_count_before = event::num_events();
+    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
+    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut v, &mut r, &mut p, 333);
+    assert_eq!(event::num_events() - event_count_before, 4);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
+    let event_count_before = event::num_events();
+    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
+    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut v, &mut r, &mut p, 333);
+    assert_eq!(event::num_events() - event_count_before, 4);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
     assert_eq!(p.cumulative_deposits(), 666);
-    assert_eq!(event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 2);
-    assert_eq!(event::events_by_type<plugin::RecordingVaultCapabilityBorrowedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 2);
+    assert_eq!(event::events_by_type<action::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 2);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), 2);
     balance::destroy_for_testing(p.claim_rewards(&mut st));
     p.unregister_stake(&mut st);
     balance::destroy_for_testing(stake::destroy(st));
@@ -295,7 +349,7 @@ fun duplicate_crank_in_one_tx_is_not_a_no_op() {
     clean(r, v, a);
 }
 
-/// The plugin event's `amount` is the pool's cumulative-deposit delta, so it
+/// The action event's `amount` is the pool's cumulative-deposit delta, so it
 /// always equals what the pool actually received from the Action.
 #[test]
 fun deposit_event_amount_matches_pool_delta() {
@@ -306,10 +360,16 @@ fun deposit_event_amount_matches_pool_delta() {
     p.register_stake(&mut st);
     plugin::install(&mut v, &a);
     let before = p.cumulative_deposits();
+    let event_count_before = event::num_events();
+    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
+    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut v, &mut r, &mut p, 1_000_003);
-    let es = event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
+    assert_eq!(event::num_events() - event_count_before, 4);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
+    let es = event::events_by_type<action::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
     assert_eq!(es.length(), 1);
-    let (_, _, _, _, _, _, _, _, _, _, _, _, d0, d1, _, _, amount) = plugin::funds_deposited_event_fields(&es[0]);
+    let (_, _, _, _, amount, _, _, _, _, _, _, _, d0, d1) = action::funds_deposited_event_fields(&es[0]);
     assert_eq!(d0, before);
     assert_eq!(d1 - d0, amount as u128);
     assert_eq!(amount, 1_000_003);
@@ -337,10 +397,16 @@ fun u64_max_snapshot_through_the_plugin_deposits_without_abort() {
     p.register_stake(&mut st);
     plugin::install(&mut v, &a);
     let max = std::u64::max_value!();
+    let event_count_before = event::num_events();
+    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
+    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut v, &mut r, &mut p, max);
-    let es = event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
+    assert_eq!(event::num_events() - event_count_before, 4);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
+    let es = event::events_by_type<action::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
     assert_eq!(es.length(), 1);
-    let (_, _, _, _, _, b0, b1, _, _, _, _, _, d0, d1, _, _, amount) = plugin::funds_deposited_event_fields(&es[0]);
+    let (_, _, _, _, amount, b0, b1, _, _, _, _, _, d0, d1) = action::funds_deposited_event_fields(&es[0]);
     assert_eq!(amount, max);
     assert_eq!(b0, 0);
     assert_eq!(b1, max);

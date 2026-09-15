@@ -8,10 +8,7 @@ invoke private entry endpoints to receive Recording coins or redeem its full
 canonical settled snapshot into the matching canonical royalty pool. The
 redemption entry `redeem_all_and_deposit` takes `&AccumulatorRoot` and no
 amount. A zero snapshot, or a pool with no registered stake, is a no-op that
-redeems nothing: the cap is leased and returned (one
-`RecordingVaultCapabilityBorrowedEvent`) and no `RecordingFundsDepositedEvent`
-is emitted. When funds are deposited, that event's `amount` is the pool's
-cumulative-deposit delta, exactly what the Action redeemed and deposited.
+redeems nothing while the cap is still leased and returned.
 
 The no-op holds only across consensus commits: the settled snapshot is
 constant within a commit, so cranking the same Recording twice in one PTB, or
@@ -22,9 +19,9 @@ most once per PTB and retry that status next commit.
 Each executor performs only `borrow_as_plugin -> matching Action -> put_back`.
 The plugin exposes no pool creation or address derivation; call the public
 Action directly for `new_pool` and `pool_address`. All validation, arithmetic,
-transfers, and business rules remain in the Action or royalty-pool core. Plugin
-events describe installation, custody, and observed financial changes around
-those operations.
+transfers, and business rules remain in the Action or royalty-pool core. The
+plugin emits lifecycle events for installation and uninstallation; operation
+results come from the underlying Vault, Action, and royalty-pool events.
 
 Operational entries return `()` and accept no Vault admin cap, address,
 recipient, destination, sender, or transaction context. Test-only public

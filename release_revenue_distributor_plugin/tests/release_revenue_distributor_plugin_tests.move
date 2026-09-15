@@ -27,7 +27,6 @@ const STRANGER: address = @0x51;
 
 public struct CURRENCY() has drop;
 public struct OTHER_CURRENCY() has drop;
-public struct OTHER_WITNESS() has drop;
 
 fun new_vault(
     cap: ReleaseAdminCap,
@@ -181,49 +180,44 @@ fun direct_action_and_capless_plugin_emit_identical_distributions() {
     let plugin_ticket = test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(plugin_coin_id);
     let plugin_ticket_2 =
         test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(plugin_coin_2_id);
+    let event_count_before = event::num_events();
+    let (borrow_count_before, return_count_before) = lease_event_counts();
     plugin::receive_and_distribute_for_testing(
         &mut vault,
         &mut release,
         vector[plugin_ticket, plugin_ticket_2],
     );
+    assert_eq!(event::num_events() - event_count_before, 6);
+    assert_lease_event_counts(borrow_count_before + 1, return_count_before + 1);
     let coin_events = event::events_by_type<
-        plugin::ReleaseRevenueCoinsDistributedEvent<CURRENCY, ReleaseAdminCap, Witness>
+        action::ReleaseCoinsReceivedEvent<CURRENCY>
     >();
     assert_eq!(coin_events.length(), 1);
-    let (
-        event_vault_id,
-        event_cap_id,
-        event_release_id,
-        input_coin_count,
-        input_coin_ids,
-    ) = plugin::coins_distributed_event_fields(&coin_events[0]);
-    assert_eq!(event_vault_id, object::id(&vault).to_address());
+    let (event_release_id, event_cap_id, input_coin_ids, amount) = action::coins_received_event_fields(&coin_events[0]);
+    assert_eq!(amount, 10_001);
     assert_eq!(event_cap_id, cap_id.to_address());
     assert_eq!(event_release_id, release_id.to_address());
-    assert_eq!(input_coin_count, 2);
+    assert_eq!(input_coin_ids.length(), 2);
     assert_eq!(
         input_coin_ids,
         vector[plugin_coin_id.to_address(), plugin_coin_2_id.to_address()],
     );
     assert_eq!(
         event::events_by_type<
-            plugin::ReleaseRevenueCoinsDistributedEvent<OTHER_CURRENCY, ReleaseAdminCap, Witness>
-        >()
-        .length(),
-        0,
-    );
-    assert_eq!(
-        event::events_by_type<
-            plugin::ReleaseRevenueCoinsDistributedEvent<CURRENCY, ReleaseAdminCap, OTHER_WITNESS>
+            action::ReleaseCoinsReceivedEvent<OTHER_CURRENCY>
         >()
         .length(),
         0,
     );
     let root = scenario.take_shared<AccumulatorRoot>();
+    let event_count_before = event::num_events();
+    let (borrow_count_before, return_count_before) = lease_event_counts();
     plugin::redeem_all_and_distribute_for_testing<CURRENCY>(&mut vault, &mut release, &root);
+    assert_eq!(event::num_events() - event_count_before, 2);
+    assert_lease_event_counts(borrow_count_before + 1, return_count_before + 1);
     assert_eq!(
         event::events_by_type<
-            plugin::ReleaseRevenueFundsDistributedEvent<CURRENCY, ReleaseAdminCap, Witness>
+            action::ReleaseFundsRedeemedEvent<CURRENCY>
         >()
         .length(),
         0,
@@ -306,7 +300,7 @@ fun install_uninstall_reinstall_events_capture_each_transition() {
 }
 
 #[test]
-fun nonempty_zero_coin_keeps_plugin_and_action_events() {
+fun nonempty_zero_coin_keeps_underlying_business_events() {
     let mut scenario = test_scenario::begin(@0x0);
     let (mut release, mut vault, vault_admin_cap) = fixture(scenario.ctx());
     let release_id = object::id(&release);
@@ -318,20 +312,25 @@ fun nonempty_zero_coin_keeps_plugin_and_action_events() {
 
     scenario.next_tx(STRANGER);
     let ticket = test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(zero_coin_id);
+    let event_count_before = event::num_events();
+    let (borrow_count_before, return_count_before) = lease_event_counts();
     plugin::receive_and_distribute_for_testing(
         &mut vault,
         &mut release,
         vector[ticket],
     );
+    assert_eq!(event::num_events() - event_count_before, 6);
+    assert_lease_event_counts(borrow_count_before + 1, return_count_before + 1);
     let coin_events = event::events_by_type<
-        plugin::ReleaseRevenueCoinsDistributedEvent<CURRENCY, ReleaseAdminCap, Witness>
+        action::ReleaseCoinsReceivedEvent<CURRENCY>
     >();
     assert_eq!(coin_events.length(), 1);
-    let (_, event_cap_id, event_release_id, count, ids) =
-        plugin::coins_distributed_event_fields(&coin_events[0]);
+    let (event_release_id, event_cap_id, ids, amount) =
+        action::coins_received_event_fields(&coin_events[0]);
+    assert_eq!(amount, 0);
     assert_eq!(event_cap_id, cap_id.to_address());
     assert_eq!(event_release_id, release_id.to_address());
-    assert_eq!(count, 1);
+    assert_eq!(ids.length(), 1);
     assert_eq!(ids, vector[zero_coin_id.to_address()]);
     let tracks = event::events_by_type<action::ReleaseTrackRevenueDistributedEvent<CURRENCY>>();
     assert_eq!(tracks.length(), 2);
@@ -347,7 +346,7 @@ fun nonempty_zero_coin_keeps_plugin_and_action_events() {
     assert_eq!(remainder, 0);
     assert_eq!(
         event::events_by_type<
-            plugin::ReleaseRevenueFundsDistributedEvent<CURRENCY, ReleaseAdminCap, Witness>
+            action::ReleaseFundsRedeemedEvent<CURRENCY>
         >()
         .length(),
         0,
@@ -357,8 +356,8 @@ fun nonempty_zero_coin_keeps_plugin_and_action_events() {
     scenario.end();
 }
 
-#[test, expected_failure(abort_code = 0)]
-fun empty_coin_vector_preserves_hikida_abort() {
+#[test, expected_failure(abort_code = 0, location = action)]
+fun empty_coin_vector_preserves_action_abort() {
     let mut scenario = test_scenario::begin(@0x0);
     let (mut release, mut vault, vault_admin_cap) = fixture(scenario.ctx());
     plugin::install(&mut vault, &vault_admin_cap);
@@ -439,4 +438,17 @@ fun wrong_release_target_aborts() {
         &root,
     );
     abort
+}
+
+fun lease_event_counts(): (u64, u64) {
+    (
+        event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<ReleaseAdminCap, Witness>>().length(),
+        event::events_by_type<vault::VaultCapabilityReturnedEvent<ReleaseAdminCap>>().length(),
+    )
+}
+
+fun assert_lease_event_counts(expected_borrows: u64, expected_returns: u64) {
+    let (borrows, returns) = lease_event_counts();
+    assert_eq!(borrows, expected_borrows);
+    assert_eq!(returns, expected_returns);
 }
