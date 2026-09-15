@@ -122,21 +122,17 @@ fun direct_action_and_capless_plugin_have_identical_effects() {
     scenario.next_tx(STRANGER);
     let plugin_ticket = test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(plugin_coin_id);
     let event_count_before = event::num_events();
-    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
     plugin::receive_and_deposit_for_testing(
         &mut vault,
         &mut recording,
         &mut pool,
         vector[plugin_ticket],
     );
-    assert_eq!(event::num_events() - event_count_before, 3);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 2);
     balance::create_for_testing<CURRENCY>(333).send_funds(recording_id.to_address());
     let event_count_before = event::num_events();
-    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut recording, &mut pool, 333);
-    assert_eq!(event::num_events() - event_count_before, 3);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 2);
 
     assert_eq!(pool.cumulative_deposits(), 666);
     let deposits = event::events_by_type<pool::RoyaltyDepositedEvent<SHARE, CURRENCY>>();

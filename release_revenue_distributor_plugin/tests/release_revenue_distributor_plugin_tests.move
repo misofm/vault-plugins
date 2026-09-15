@@ -157,14 +157,12 @@ fun direct_action_and_capless_plugin_emit_identical_distributions() {
     let plugin_ticket_2 =
         test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(plugin_coin_2_id);
     let event_count_before = event::num_events();
-    let borrow_count_before = lease_event_counts();
     plugin::receive_and_distribute_for_testing(
         &mut vault,
         &mut release,
         vector[plugin_ticket, plugin_ticket_2],
     );
-    assert_eq!(event::num_events() - event_count_before, 5);
-    assert_lease_event_counts(borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 4);
     let coin_events = event::events_by_type<
         action::ReleaseCoinsReceivedEvent<CURRENCY>
     >();
@@ -187,10 +185,8 @@ fun direct_action_and_capless_plugin_emit_identical_distributions() {
     );
     let root = scenario.take_shared<AccumulatorRoot>();
     let event_count_before = event::num_events();
-    let borrow_count_before = lease_event_counts();
     plugin::redeem_all_and_distribute_for_testing<CURRENCY>(&mut vault, &mut release, &root);
-    assert_eq!(event::num_events() - event_count_before, 1);
-    assert_lease_event_counts(borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 0);
     assert_eq!(
         event::events_by_type<
             action::ReleaseFundsRedeemedEvent<CURRENCY>
@@ -286,14 +282,12 @@ fun nonempty_zero_coin_keeps_underlying_business_events() {
     scenario.next_tx(STRANGER);
     let ticket = test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(zero_coin_id);
     let event_count_before = event::num_events();
-    let borrow_count_before = lease_event_counts();
     plugin::receive_and_distribute_for_testing(
         &mut vault,
         &mut release,
         vector[ticket],
     );
-    assert_eq!(event::num_events() - event_count_before, 2);
-    assert_lease_event_counts(borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 1);
     let coin_events = event::events_by_type<
         action::ReleaseCoinsReceivedEvent<CURRENCY>
     >();
@@ -403,13 +397,4 @@ fun wrong_release_target_aborts() {
         &root,
     );
     abort
-}
-
-fun lease_event_counts(): u64 {
-    event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<ReleaseAdminCap, Witness>>().length()
-}
-
-fun assert_lease_event_counts(expected_borrows: u64) {
-    let borrows = lease_event_counts();
-    assert_eq!(borrows, expected_borrows);
 }
