@@ -5,7 +5,7 @@ license = "Apache 2.0"
 authors = ["Miso Labs, Inc. (build@miso.network)"]
 
 [dependencies]
-recording_royalty_pool = { git = "https://github.com/misofm/musicos-actions.git", subdir = "recording_royalty_pool", rev = "7c960ae14cf780954436cef7910ba82d19b7ef4a" }
+recording_royalty_pool = { git = "https://github.com/misofm/musicos-actions.git", subdir = "recording_royalty_pool", rev = "57003465c09d5652dcc89fa8508378b1015c512a" }
 vault = { git = "https://github.com/misofm/vault.git", rev = "987f774eb1b4f692e0b3974d6a5acc55c8004cc5" }
-musicos = { git = "https://github.com/misofm/musicos.git", rev = "e56c4cbc0d9673f6422e365364b128d0813341ac" }
+musicos = { git = "https://github.com/misofm/musicos.git", rev = "a8dfc74f2f234e79574821f096c8463aec19411e" }
 royalty_pool = { git = "https://github.com/misofm/royalty-pool.git", rev = "7b140a56940981def6eaadb30ea187b81f4f9b04" }
