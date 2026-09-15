@@ -21,18 +21,12 @@ transfers, remainder handling, validation, and distribution events.
 
 ## Events
 
-Installation emits one `ReleaseRevenueDistributorPluginInstalledEvent<ReleaseAdminCap, Witness>` after the vault authorization succeeds. Uninstallation emits one `ReleaseRevenueDistributorPluginUninstalledEvent<ReleaseAdminCap, Witness>` after revocation succeeds. Both have this primitive schema, in order:
-
-```text
-vault_id: address
-vault_admin_cap_id: address
-release_admin_cap_id: address
-vault_active: bool
-authorized_before: bool
-authorized_after: bool
-authorized_plugin_count_before: u64
-authorized_plugin_count_after: u64
-```
+Installation and uninstallation use the Vault's typed
+`PluginAuthorizedEvent<ReleaseAdminCap, Witness>` and
+`PluginRevokedEvent<ReleaseAdminCap, Witness>` after authorization or
+revocation succeeds. Their generic Vault payload is the canonical lifecycle
+record, including vault, capability, administrator, authorization Bag, count,
+and final authorized state.
 
 Operation results come from the underlying Vault and Action events. The
 plugin does not duplicate input identity or settled-fund snapshots. The
@@ -41,8 +35,9 @@ per-track/aggregate distribution events.
 
 An empty settled snapshot still authorizes the Release through the Action and
 returns the capability. A nonempty vector containing a zero-valued coin
-succeeds, consumes the coin, and the Action emits its zero-valued track and
-summary events. An empty receiving vector retains the Action's
+succeeds, consumes the coin, and the Action retains only its
+`ReleaseCoinsReceivedEvent`; zero-valued track and summary distribution events
+are suppressed. An empty receiving vector retains the Action's
 `ENoCoinsToReceive` abort. The Move VM does not establish a positive
 consensus accumulator snapshot from ordinary test-scenario fund sends, so
 positive settled-input execution requires a network E2E.

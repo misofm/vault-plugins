@@ -9,47 +9,15 @@ use recording_royalty_pool::recording_royalty_pool as action;
 use recording_royalty_pool_plugin::witness::{Self, Witness};
 use royalty_pool::pool::RoyaltyPool;
 use sui::accumulator::AccumulatorRoot;
-use sui::bag;
 use sui::coin::Coin;
-use sui::event::emit;
 use sui::transfer::Receiving;
 use vault::vault::{Vault, VaultAdminCap};
-
-/// Snapshot of this plugin's authorization record after installation.
-public struct RecordingRoyaltyPoolPluginInstalledEvent<phantom RecordingShare>
-    has copy, drop {
-    vault_id: address,
-    cap_id: address,
-    vault_admin_cap_id: address,
-    authorized_plugins_id: address,
-    authorized_plugin_count: u64,
-    installed: bool,
-}
-
-/// Snapshot of this plugin's authorization record after uninstallation.
-public struct RecordingRoyaltyPoolPluginUninstalledEvent<phantom RecordingShare>
-    has copy, drop {
-    vault_id: address,
-    cap_id: address,
-    vault_admin_cap_id: address,
-    authorized_plugins_id: address,
-    authorized_plugin_count: u64,
-    installed: bool,
-}
 
 public fun install<RecordingShare>(
     vault: &mut Vault<RecordingAdminCap<RecordingShare>>,
     vault_admin_cap: &VaultAdminCap<RecordingAdminCap<RecordingShare>>,
 ) {
     vault.authorize_plugin(vault_admin_cap, witness::new());
-    emit(RecordingRoyaltyPoolPluginInstalledEvent<RecordingShare> {
-        vault_id: object::id(vault).to_address(),
-        cap_id: vault.cap_id().to_address(),
-        vault_admin_cap_id: object::id(vault_admin_cap).to_address(),
-        authorized_plugins_id: object::id(vault.authorized_plugins()).to_address(),
-        authorized_plugin_count: bag::length(vault.authorized_plugins()),
-        installed: vault.is_plugin_authorized<RecordingAdminCap<RecordingShare>, Witness>(),
-    });
 }
 
 public fun uninstall<RecordingShare>(
@@ -57,14 +25,6 @@ public fun uninstall<RecordingShare>(
     vault_admin_cap: &VaultAdminCap<RecordingAdminCap<RecordingShare>>,
 ) {
     vault.revoke_plugin<RecordingAdminCap<RecordingShare>, Witness>(vault_admin_cap);
-    emit(RecordingRoyaltyPoolPluginUninstalledEvent<RecordingShare> {
-        vault_id: object::id(vault).to_address(),
-        cap_id: vault.cap_id().to_address(),
-        vault_admin_cap_id: object::id(vault_admin_cap).to_address(),
-        authorized_plugins_id: object::id(vault.authorized_plugins()).to_address(),
-        authorized_plugin_count: bag::length(vault.authorized_plugins()),
-        installed: vault.is_plugin_authorized<RecordingAdminCap<RecordingShare>, Witness>(),
-    });
 }
 
 public fun is_installed<RecordingShare>(
@@ -159,34 +119,4 @@ public fun redeem_settled_value_and_deposit_for_testing<RecordingShare, Composit
     let (cap, receipt) = vault.borrow_as_plugin(witness::new());
     action::redeem_settled_value_and_deposit_for_testing(recording, &cap, pool, value);
     vault.put_back(cap, receipt);
-}
-
-// === Test Functions ===
-
-#[test_only]
-public fun installed_event_fields<RecordingShare>(
-    event: &RecordingRoyaltyPoolPluginInstalledEvent<RecordingShare>,
-): (address, address, address, address, u64, bool) {
-    (
-        event.vault_id,
-        event.cap_id,
-        event.vault_admin_cap_id,
-        event.authorized_plugins_id,
-        event.authorized_plugin_count,
-        event.installed,
-    )
-}
-
-#[test_only]
-public fun uninstalled_event_fields<RecordingShare>(
-    event: &RecordingRoyaltyPoolPluginUninstalledEvent<RecordingShare>,
-): (address, address, address, address, u64, bool) {
-    (
-        event.vault_id,
-        event.cap_id,
-        event.vault_admin_cap_id,
-        event.authorized_plugins_id,
-        event.authorized_plugin_count,
-        event.installed,
-    )
 }
