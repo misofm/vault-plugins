@@ -167,15 +167,11 @@ fun direct_action_and_capless_plugin_emit_identical_distributions() {
         action::ReleaseCoinsReceivedEvent<CURRENCY>
     >();
     assert_eq!(coin_events.length(), 1);
-    let (event_release_id, event_cap_id, input_coin_ids, amount) = action::coins_received_event_fields(&coin_events[0]);
+    let (event_release_id, event_cap_id, input_coin_count, amount) = action::coins_received_event_fields(&coin_events[0]);
     assert_eq!(amount, 10_001);
     assert_eq!(event_cap_id, cap_id.to_address());
     assert_eq!(event_release_id, release_id.to_address());
-    assert_eq!(input_coin_ids.length(), 2);
-    assert_eq!(
-        input_coin_ids,
-        vector[plugin_coin_id.to_address(), plugin_coin_2_id.to_address()],
-    );
+    assert_eq!(input_coin_count, 2);
     assert_eq!(
         event::events_by_type<
             action::ReleaseCoinsReceivedEvent<OTHER_CURRENCY>
@@ -292,13 +288,12 @@ fun nonempty_zero_coin_keeps_underlying_business_events() {
         action::ReleaseCoinsReceivedEvent<CURRENCY>
     >();
     assert_eq!(coin_events.length(), 1);
-    let (event_release_id, event_cap_id, ids, amount) =
+    let (event_release_id, event_cap_id, coin_count, amount) =
         action::coins_received_event_fields(&coin_events[0]);
     assert_eq!(amount, 0);
     assert_eq!(event_cap_id, cap_id.to_address());
     assert_eq!(event_release_id, release_id.to_address());
-    assert_eq!(ids.length(), 1);
-    assert_eq!(ids, vector[zero_coin_id.to_address()]);
+    assert_eq!(coin_count, 1);
     let tracks = event::events_by_type<action::ReleaseTrackRevenueDistributedEvent<CURRENCY>>();
     assert_eq!(tracks.length(), 0);
     let summaries = event::events_by_type<action::ReleaseRevenueDistributedEvent<CURRENCY>>();
