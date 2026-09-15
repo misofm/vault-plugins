@@ -692,3 +692,98 @@ fun batch_with_no_op_items_still_deposits_the_funded_staked_composition() {
     cleanup(composition_c, vault_c, admin_c);
     scenario.end();
 }
+
+/// Two cranks of the same object in ONE transaction re-redeem the same
+/// snapshot in the unit VM. On the network the second withdrawal exceeds the
+/// settled balance and the whole transaction fails with
+/// `InsufficientFundsForWithdraw`; batched crankers must dedupe objects per
+/// PTB. Pins that the plugin has no in-transaction dedupe either.
+#[test]
+fun duplicate_crank_in_one_tx_is_not_a_no_op() {
+    let ctx = &mut tx_context::dummy();
+    let (mut composition, mut vault, vault_admin_cap) = fixture(ctx);
+    let mut pool = new_pool(&mut composition, &mut vault, &vault_admin_cap);
+    let mut stake = stake::new(balance::create_for_testing<SHARE>(100), ctx);
+    pool.register_stake(&mut stake);
+    plugin::install(&mut vault, &vault_admin_cap);
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 333);
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 333);
+    assert_eq!(pool.cumulative_deposits(), 666);
+    assert_eq!(
+        event::events_by_type<plugin::CompositionFundsDepositedEvent<SHARE, CURRENCY>>().length(),
+        2,
+    );
+    assert_eq!(
+        event::events_by_type<plugin::CompositionVaultCapabilityBorrowedEvent<SHARE, CURRENCY>>().length(),
+        2,
+    );
+    balance::destroy_for_testing(pool.claim_rewards(&mut stake));
+    pool.unregister_stake(&mut stake);
+    balance::destroy_for_testing(stake::destroy(stake));
+    plugin::uninstall(&mut vault, &vault_admin_cap);
+    destroy(pool);
+    cleanup(composition, vault, vault_admin_cap);
+}
+
+/// The plugin event's `amount` is the pool's cumulative-deposit delta, so it
+/// always equals what the pool actually received from the Action.
+#[test]
+fun deposit_event_amount_matches_pool_delta() {
+    let ctx = &mut tx_context::dummy();
+    let (mut composition, mut vault, vault_admin_cap) = fixture(ctx);
+    let mut pool = new_pool(&mut composition, &mut vault, &vault_admin_cap);
+    let mut stake = stake::new(balance::create_for_testing<SHARE>(7), ctx);
+    pool.register_stake(&mut stake);
+    plugin::install(&mut vault, &vault_admin_cap);
+    let before = pool.cumulative_deposits();
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 1_000_003);
+    let funds_events = event::events_by_type<plugin::CompositionFundsDepositedEvent<SHARE, CURRENCY>>();
+    assert_eq!(funds_events.length(), 1);
+    let (_, _, _, _, _, _, _, _, _, _, _, d0, d1, _, _, amount) =
+        plugin::funds_deposited_event_fields(&funds_events[0]);
+    assert_eq!(d0, before);
+    assert_eq!(d1 - d0, amount as u128);
+    assert_eq!(amount, 1_000_003);
+    assert_eq!(pool.cumulative_deposits() - before, 1_000_003);
+    let pool_events = event::events_by_type<pool::RoyaltyDepositedEvent<SHARE, CURRENCY>>();
+    assert_eq!(pool_events.length(), 1);
+    let (_, value, _, _, _, _, _, _, _) = pool::deposited_event_fields(&pool_events[0]);
+    assert_eq!(value, amount);
+    balance::destroy_for_testing(pool.claim_rewards(&mut stake));
+    pool.unregister_stake(&mut stake);
+    balance::destroy_for_testing(stake::destroy(stake));
+    plugin::uninstall(&mut vault, &vault_admin_cap);
+    destroy(pool);
+    cleanup(composition, vault, vault_admin_cap);
+}
+
+/// The framework caps the settled snapshot at `u64::MAX`; the plugin path
+/// must not abort at the cap and must report it exactly.
+#[test]
+fun u64_max_snapshot_through_the_plugin_deposits_without_abort() {
+    let ctx = &mut tx_context::dummy();
+    let (mut composition, mut vault, vault_admin_cap) = fixture(ctx);
+    let mut pool = new_pool(&mut composition, &mut vault, &vault_admin_cap);
+    let mut stake = stake::new(balance::create_for_testing<SHARE>(100), ctx);
+    pool.register_stake(&mut stake);
+    plugin::install(&mut vault, &vault_admin_cap);
+    let max = std::u64::max_value!();
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, max);
+    let funds_events = event::events_by_type<plugin::CompositionFundsDepositedEvent<SHARE, CURRENCY>>();
+    assert_eq!(funds_events.length(), 1);
+    let (_, _, _, _, b0, b1, _, _, _, _, _, d0, d1, _, _, amount) =
+        plugin::funds_deposited_event_fields(&funds_events[0]);
+    assert_eq!(amount, max);
+    assert_eq!(b0, 0);
+    assert_eq!(b1, max);
+    assert_eq!(d0, 0);
+    assert_eq!(d1, max as u128);
+    let reward = pool.claim_rewards(&mut stake);
+    assert_eq!(reward.value(), max);
+    balance::destroy_for_testing(reward);
+    pool.unregister_stake(&mut stake);
+    balance::destroy_for_testing(stake::destroy(stake));
+    plugin::uninstall(&mut vault, &vault_admin_cap);
+    destroy(pool);
+    cleanup(composition, vault, vault_admin_cap);
+}

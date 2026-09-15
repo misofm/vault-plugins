@@ -35,7 +35,7 @@ manifest_digest = "43EF3B938D7EEE22C9657EB418DA5C9E9984D02D725538A82E7D3268322F9
 deps = { bps = "bps", share = "share", std = "MoveStdlib", sui = "Sui" }
 
 [pinned.mainnet.recording_royalty_pool]
-source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "recording_royalty_pool", rev = "1238a44dc95a2f60aa01d9eac2bbfc4cbfca84ea" }
+source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "recording_royalty_pool", rev = "f4600eb088c114cd1b0e368155eb987f2c69fa0c" }
 use_environment = "mainnet"
 manifest_digest = "65467FF511307FCF08E9225C2D28A5085B11BF8AB52E2781F2F4FD82A6AB20BE"
 deps = { hikida = "hikida", musicos = "musicos", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
@@ -43,7 +43,7 @@ deps = { hikida = "hikida", musicos = "musicos", royalty_pool = "royalty_pool", 
 [pinned.mainnet.recording_royalty_pool_plugin]
 source = { root = true }
 use_environment = "mainnet"
-manifest_digest = "BAAEA0CD4F95E77B657F78D73900D6D1370A91A7DB422922DF3B5D531E96E3F3"
+manifest_digest = "752BC6EE1A2F9802487D9ECAA6914F50E1FFEABF2713A3A6C38DF2277767E74C"
 deps = { musicos = "musicos", recording_royalty_pool = "recording_royalty_pool", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.mainnet.royalty_pool]
@@ -95,7 +95,7 @@ manifest_digest = "6746D45CC0E1EB869033BB4778064980963001D5C9C151F74A7A7D1DDEAE0
 deps = { bps = "bps", share = "share", std = "MoveStdlib", sui = "Sui" }
 
 [pinned.testnet.recording_royalty_pool]
-source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "recording_royalty_pool", rev = "1238a44dc95a2f60aa01d9eac2bbfc4cbfca84ea" }
+source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "recording_royalty_pool", rev = "f4600eb088c114cd1b0e368155eb987f2c69fa0c" }
 use_environment = "testnet"
 manifest_digest = "457320A22D3096BDB677BF630D8089F7C55DDCE1CA78487E3EC7045B0BF9C6E6"
 deps = { hikida = "hikida", musicos = "musicos", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
@@ -103,7 +103,7 @@ deps = { hikida = "hikida", musicos = "musicos", royalty_pool = "royalty_pool", 
 [pinned.testnet.recording_royalty_pool_plugin]
 source = { root = true }
 use_environment = "testnet"
-manifest_digest = "2BCEDA8F244F57220BE3418F2F8120F2DD5D9431D57338CDA5C167DF1EDFE524"
+manifest_digest = "16447A7A4E3EF5F67D169C428AB8365C99691F284F48F4ADE9038FEA8132C67D"
 deps = { musicos = "musicos", recording_royalty_pool = "recording_royalty_pool", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.testnet.royalty_pool]

@@ -50,12 +50,21 @@ Every redemption crank (`redeem_all_and_distribute` for a Release,
 `redeem_all_and_deposit` for a Composition or Recording) accepts the canonical
 `AccumulatorRoot`, never a caller-selected amount. It snapshots and redeems all
 funds settled for the object at the start of the consensus commit. A zero
-snapshot is an idempotent no-op, and the pool cranks are also a no-op that
-redeems nothing while the pool has no registered stake, so a batched
-permissionless crank never aborts on an already-cranked or unstaked item.
-Excess beyond the framework's `u64` snapshot and later funds remain for a
-subsequent crank. This prevents permissionless callers from fragmenting a
-settlement into dust-sized distributions.
+snapshot is a no-op, and the pool cranks are also a no-op that redeems
+nothing while the pool has no registered stake, so a batched permissionless
+crank passes untouched over an item cranked in an earlier commit or an
+unstaked item. Excess beyond the framework's `u64` snapshot and later funds
+remain for a subsequent crank. This prevents permissionless callers from
+fragmenting a settlement into dust-sized distributions.
+
+The no-op holds only across consensus commits. The settled snapshot is
+written solely by the settlement system transaction and is constant for every
+transaction in a commit, so cranking the same object twice in one PTB, or
+from two crankers in the same commit, withdraws the snapshot twice and the
+network fails that whole transaction with `InsufficientFundsForWithdraw` (a
+transaction-level failure with no Move abort code). A crank must include each
+object at most once per PTB and treat that status as "retry next commit",
+not as a poisoned item.
 
 ## Dependency pinning
 

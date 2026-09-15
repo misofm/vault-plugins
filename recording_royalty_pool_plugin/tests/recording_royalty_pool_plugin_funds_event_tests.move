@@ -268,3 +268,90 @@ fun batch_with_no_op_items_still_deposits_the_funded_staked_recording() {
     clean(rc, vc, ac);
     s.end();
 }
+
+/// Two cranks of the same object in ONE transaction re-redeem the same
+/// snapshot in the unit VM. On the network the second withdrawal exceeds the
+/// settled balance and the whole transaction fails with
+/// `InsufficientFundsForWithdraw`; batched crankers must dedupe objects per
+/// PTB. Pins that the plugin has no in-transaction dedupe either.
+#[test]
+fun duplicate_crank_in_one_tx_is_not_a_no_op() {
+    let ctx = &mut tx_context::dummy();
+    let (mut r, mut v, a) = make(ctx);
+    let mut p = pool(&mut r, &mut v, &a);
+    let mut st = stake::new(balance::create_for_testing<SHARE>(100), ctx);
+    p.register_stake(&mut st);
+    plugin::install(&mut v, &a);
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut v, &mut r, &mut p, 333);
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut v, &mut r, &mut p, 333);
+    assert_eq!(p.cumulative_deposits(), 666);
+    assert_eq!(event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 2);
+    assert_eq!(event::events_by_type<plugin::RecordingVaultCapabilityBorrowedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 2);
+    balance::destroy_for_testing(p.claim_rewards(&mut st));
+    p.unregister_stake(&mut st);
+    balance::destroy_for_testing(stake::destroy(st));
+    plugin::uninstall(&mut v, &a);
+    destroy(p);
+    clean(r, v, a);
+}
+
+/// The plugin event's `amount` is the pool's cumulative-deposit delta, so it
+/// always equals what the pool actually received from the Action.
+#[test]
+fun deposit_event_amount_matches_pool_delta() {
+    let ctx = &mut tx_context::dummy();
+    let (mut r, mut v, a) = make(ctx);
+    let mut p = pool(&mut r, &mut v, &a);
+    let mut st = stake::new(balance::create_for_testing<SHARE>(7), ctx);
+    p.register_stake(&mut st);
+    plugin::install(&mut v, &a);
+    let before = p.cumulative_deposits();
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut v, &mut r, &mut p, 1_000_003);
+    let es = event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
+    assert_eq!(es.length(), 1);
+    let (_, _, _, _, _, _, _, _, _, _, _, _, d0, d1, _, _, amount) = plugin::funds_deposited_event_fields(&es[0]);
+    assert_eq!(d0, before);
+    assert_eq!(d1 - d0, amount as u128);
+    assert_eq!(amount, 1_000_003);
+    assert_eq!(p.cumulative_deposits() - before, 1_000_003);
+    let pool_events = event::events_by_type<pool::RoyaltyDepositedEvent<SHARE, CURRENCY>>();
+    assert_eq!(pool_events.length(), 1);
+    let (_, value, _, _, _, _, _, _, _) = pool::deposited_event_fields(&pool_events[0]);
+    assert_eq!(value, amount);
+    balance::destroy_for_testing(p.claim_rewards(&mut st));
+    p.unregister_stake(&mut st);
+    balance::destroy_for_testing(stake::destroy(st));
+    plugin::uninstall(&mut v, &a);
+    destroy(p);
+    clean(r, v, a);
+}
+
+/// The framework caps the settled snapshot at `u64::MAX`; the plugin path
+/// must not abort at the cap and must report it exactly.
+#[test]
+fun u64_max_snapshot_through_the_plugin_deposits_without_abort() {
+    let ctx = &mut tx_context::dummy();
+    let (mut r, mut v, a) = make(ctx);
+    let mut p = pool(&mut r, &mut v, &a);
+    let mut st = stake::new(balance::create_for_testing<SHARE>(100), ctx);
+    p.register_stake(&mut st);
+    plugin::install(&mut v, &a);
+    let max = std::u64::max_value!();
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut v, &mut r, &mut p, max);
+    let es = event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
+    assert_eq!(es.length(), 1);
+    let (_, _, _, _, _, b0, b1, _, _, _, _, _, d0, d1, _, _, amount) = plugin::funds_deposited_event_fields(&es[0]);
+    assert_eq!(amount, max);
+    assert_eq!(b0, 0);
+    assert_eq!(b1, max);
+    assert_eq!(d0, 0);
+    assert_eq!(d1, max as u128);
+    let reward = p.claim_rewards(&mut st);
+    assert_eq!(reward.value(), max);
+    balance::destroy_for_testing(reward);
+    p.unregister_stake(&mut st);
+    balance::destroy_for_testing(stake::destroy(st));
+    plugin::uninstall(&mut v, &a);
+    destroy(p);
+    clean(r, v, a);
+}

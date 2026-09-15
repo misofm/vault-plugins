@@ -7,11 +7,17 @@ An administrator installs the package-local `witness::Witness` on a
 invoke private entry endpoints to receive Recording coins or redeem its full
 canonical settled snapshot into the matching canonical royalty pool. The
 redemption entry `redeem_all_and_deposit` takes `&AccumulatorRoot` and no
-amount. A zero snapshot, or a pool with no registered stake, is an idempotent
-no-op that redeems nothing: the cap is leased and returned (one
+amount. A zero snapshot, or a pool with no registered stake, is a no-op that
+redeems nothing: the cap is leased and returned (one
 `RecordingVaultCapabilityBorrowedEvent`) and no `RecordingFundsDepositedEvent`
-is emitted. When funds are deposited, that event's `amount` is the settled
-snapshot the Action redeemed.
+is emitted. When funds are deposited, that event's `amount` is the pool's
+cumulative-deposit delta, exactly what the Action redeemed and deposited.
+
+The no-op holds only across consensus commits: the settled snapshot is
+constant within a commit, so cranking the same Recording twice in one PTB, or
+from two crankers in the same commit, fails that whole transaction with
+`InsufficientFundsForWithdraw` (not a Move abort). Include each Recording at
+most once per PTB and retry that status next commit.
 
 Each executor performs only `borrow_as_plugin -> matching Action -> put_back`.
 The plugin exposes no pool creation or address derivation; call the public
