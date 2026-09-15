@@ -11,8 +11,10 @@ use recording_royalty_pool_plugin::recording_royalty_pool_plugin as plugin;
 use royalty_pool::pool::{Self, RoyaltyPool};
 use royalty_pool::stake::{Self, Stake};
 use std::unit_test::{assert_eq, destroy};
+use sui::accumulator::AccumulatorRoot;
 use sui::balance;
 use sui::event;
+use sui::test_scenario;
 use vault::vault::{Self, Vault, VaultAdminCap};
 
 public struct SHARE() has drop;
@@ -57,6 +59,9 @@ fun clean(
     destroy(r)
 }
 
+/// The production observe -> Action -> put_back -> report sequence with a
+/// positive settled value: exact before/after pool metrics, restored custody,
+/// and `amount` equal to the settled snapshot.
 #[test]
 fun redeem_event_snapshots_funds_and_restored_custody() {
     let ctx = &mut tx_context::dummy();
@@ -76,7 +81,7 @@ fun redeem_event_snapshots_funds_and_restored_custody() {
     let r0 = p.cumulative_reward_per_share();
     let k0 = p.carry();
     let d0 = p.cumulative_deposits();
-    plugin::redeem_and_deposit_for_testing(&mut v, &mut r, &mut p, 333);
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut v, &mut r, &mut p, 333);
     let b1 = p.balance().value();
     let r1 = p.cumulative_reward_per_share();
     let k1 = p.carry();
@@ -122,4 +127,144 @@ fun redeem_event_snapshots_funds_and_restored_custody() {
     plugin::uninstall(&mut v, &a);
     destroy(p);
     clean(r, v, a);
+}
+
+/// A zero settled snapshot through the real entry: the cap is leased and
+/// returned (borrow event only), nothing is deposited, no funds event.
+#[test]
+fun zero_snapshot_crank_emits_only_the_borrow_event() {
+    let mut s = test_scenario::begin(@0x0);
+    sui::accumulator::create_for_testing(s.ctx());
+    s.next_tx(@0xA);
+    let (mut r, mut v, a) = make(s.ctx());
+    let mut p = pool(&mut r, &mut v, &a);
+    let mut st = stake::new(balance::create_for_testing<SHARE>(100), s.ctx());
+    p.register_stake(&mut st);
+    plugin::install(&mut v, &a);
+
+    s.next_tx(@0x51);
+    let root = s.take_shared<AccumulatorRoot>();
+    plugin::redeem_all_and_deposit_for_testing(&mut v, &mut r, &mut p, &root);
+    plugin::redeem_all_and_deposit_for_testing(&mut v, &mut r, &mut p, &root);
+    assert_eq!(event::events_by_type<plugin::RecordingVaultCapabilityBorrowedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 2);
+    assert_eq!(event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 0);
+    assert_eq!(event::events_by_type<pool::RoyaltyDepositedEvent<SHARE, CURRENCY>>().length(), 0);
+    assert_eq!(p.cumulative_deposits(), 0);
+    let (c, b) = v.borrow_as_admin(&a);
+    v.put_back(c, b);
+    test_scenario::return_shared(root);
+
+    p.unregister_stake(&mut st);
+    balance::destroy_for_testing(stake::destroy(st));
+    plugin::uninstall(&mut v, &a);
+    destroy(p);
+    clean(r, v, a);
+    s.end();
+}
+
+/// With no registered stake the crank leases and returns the cap but redeems
+/// nothing; once a stake registers the same funds are deposited and reported.
+#[test]
+fun zero_staker_crank_is_a_no_op_until_a_stake_registers() {
+    let ctx = &mut tx_context::dummy();
+    let (mut r, mut v, a) = make(ctx);
+    let rid = object::id(&r);
+    let mut p = pool(&mut r, &mut v, &a);
+    plugin::install(&mut v, &a);
+    balance::create_for_testing<CURRENCY>(333).send_funds(rid.to_address());
+
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut v, &mut r, &mut p, 333);
+    assert_eq!(event::events_by_type<plugin::RecordingVaultCapabilityBorrowedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 1);
+    assert_eq!(event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 0);
+    assert_eq!(p.cumulative_deposits(), 0);
+    assert_eq!(p.balance().value(), 0);
+
+    let mut st = stake::new(balance::create_for_testing<SHARE>(100), ctx);
+    p.register_stake(&mut st);
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut v, &mut r, &mut p, 333);
+    let es = event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
+    assert_eq!(es.length(), 1);
+    let (_, _, _, _, _, b0, b1, q, _, _, _, _, d0, d1, _, _, amount) = plugin::funds_deposited_event_fields(&es[0]);
+    assert_eq!(b0, 0);
+    assert_eq!(b1, 333);
+    assert_eq!(q, 100);
+    assert_eq!(d0, 0);
+    assert_eq!(d1, 333);
+    assert_eq!(amount, 333);
+    let reward = p.claim_rewards(&mut st);
+    assert_eq!(reward.value(), 333);
+
+    p.unregister_stake(&mut st);
+    balance::destroy_for_testing(stake::destroy(st));
+    balance::destroy_for_testing(reward);
+    plugin::uninstall(&mut v, &a);
+    destroy(p);
+    clean(r, v, a);
+}
+
+/// Batch safety through the plugin: three recordings in one transaction, one
+/// with a zero snapshot and one with no stakers; only the funded, staked one
+/// deposits, and every vault gets its cap back.
+#[test]
+fun batch_with_no_op_items_still_deposits_the_funded_staked_recording() {
+    let mut s = test_scenario::begin(@0x0);
+    sui::accumulator::create_for_testing(s.ctx());
+    s.next_tx(@0xA);
+    let (mut ra, mut va, aa) = make(s.ctx());
+    let (mut rb, mut vb, ab) = make(s.ctx());
+    let (mut rc, mut vc, ac) = make(s.ctx());
+    let mut pa = pool(&mut ra, &mut va, &aa);
+    let mut pb = pool(&mut rb, &mut vb, &ab);
+    let mut pc = pool(&mut rc, &mut vc, &ac);
+    let mut sa = stake::new(balance::create_for_testing<SHARE>(10), s.ctx());
+    let mut sb = stake::new(balance::create_for_testing<SHARE>(10), s.ctx());
+    pa.register_stake(&mut sa);
+    pb.register_stake(&mut sb);
+    plugin::install(&mut va, &aa);
+    plugin::install(&mut vb, &ab);
+    plugin::install(&mut vc, &ac);
+    balance::create_for_testing<CURRENCY>(1_000).send_funds(object::id(&ra).to_address());
+    balance::create_for_testing<CURRENCY>(250).send_funds(object::id(&rc).to_address());
+
+    s.next_tx(@0x51);
+    let root = s.take_shared<AccumulatorRoot>();
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut va, &mut ra, &mut pa, 1_000);
+    plugin::redeem_all_and_deposit_for_testing(&mut vb, &mut rb, &mut pb, &root);
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut vc, &mut rc, &mut pc, 250);
+    let es = event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
+    assert_eq!(es.length(), 1);
+    let (x, _, z, _, q, _, _, _, _, _, _, _, _, _, _, _, amount) = plugin::funds_deposited_event_fields(&es[0]);
+    assert_eq!(x, object::id(&va).to_address());
+    assert_eq!(z, object::id(&ra).to_address());
+    assert_eq!(q, object::id(&pa).to_address());
+    assert_eq!(amount, 1_000);
+    assert_eq!(event::events_by_type<plugin::RecordingVaultCapabilityBorrowedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 3);
+    assert_eq!(pa.cumulative_deposits(), 1_000);
+    assert_eq!(pb.cumulative_deposits(), 0);
+    assert_eq!(pc.cumulative_deposits(), 0);
+    test_scenario::return_shared(root);
+
+    let (c, b) = va.borrow_as_admin(&aa);
+    va.put_back(c, b);
+    let (c, b) = vb.borrow_as_admin(&ab);
+    vb.put_back(c, b);
+    let (c, b) = vc.borrow_as_admin(&ac);
+    vc.put_back(c, b);
+    let reward = pa.claim_rewards(&mut sa);
+    assert_eq!(reward.value(), 1_000);
+    pa.unregister_stake(&mut sa);
+    pb.unregister_stake(&mut sb);
+    balance::destroy_for_testing(stake::destroy(sa));
+    balance::destroy_for_testing(stake::destroy(sb));
+    balance::destroy_for_testing(reward);
+    plugin::uninstall(&mut va, &aa);
+    plugin::uninstall(&mut vb, &ab);
+    plugin::uninstall(&mut vc, &ac);
+    destroy(pa);
+    destroy(pb);
+    destroy(pc);
+    clean(ra, va, aa);
+    clean(rb, vb, ab);
+    clean(rc, vc, ac);
+    s.end();
 }

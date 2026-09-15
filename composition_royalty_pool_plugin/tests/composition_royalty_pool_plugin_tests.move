@@ -17,7 +17,6 @@ use sui::event;
 use sui::test_scenario;
 use vault::vault::{Self, Vault, VaultAdminCap};
 
-const ENoValueToRedeem: u64 = 1;
 const EPoolNotDerivedFromParent: u64 = 0;
 const EPluginAlreadyAuthorized: u64 = 1;
 const EPluginNotAuthorized: u64 = 2;
@@ -359,7 +358,7 @@ fun direct_action_and_capless_plugin_have_identical_effects() {
     let funds_reward_per_share_before = pool.cumulative_reward_per_share();
     let funds_carry_before = pool.carry();
     let funds_cumulative_deposits_before = pool.cumulative_deposits();
-    plugin::redeem_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 333);
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 333);
     let funds_pool_balance_after = pool.balance().value();
     let funds_reward_per_share_after = pool.cumulative_reward_per_share();
     let funds_carry_after = pool.carry();
@@ -425,21 +424,29 @@ fun direct_action_and_capless_plugin_have_identical_effects() {
 
 #[test, expected_failure(abort_code = EPluginNotAuthorized, location = vault)]
 fun operation_before_install_aborts() {
-    let ctx = &mut tx_context::dummy();
-    let (mut composition, mut vault, vault_admin_cap) = fixture(ctx);
+    let mut scenario = test_scenario::begin(@0x0);
+    sui::accumulator::create_for_testing(scenario.ctx());
+    scenario.next_tx(@0xA);
+    let (mut composition, mut vault, vault_admin_cap) = fixture(scenario.ctx());
     let mut pool = new_pool(&mut composition, &mut vault, &vault_admin_cap);
-    plugin::redeem_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 1);
+    scenario.next_tx(STRANGER);
+    let root = scenario.take_shared<AccumulatorRoot>();
+    plugin::redeem_all_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, &root);
     abort
 }
 
 #[test, expected_failure(abort_code = EPluginNotAuthorized, location = vault)]
 fun operation_after_uninstall_aborts() {
-    let ctx = &mut tx_context::dummy();
-    let (mut composition, mut vault, vault_admin_cap) = fixture(ctx);
+    let mut scenario = test_scenario::begin(@0x0);
+    sui::accumulator::create_for_testing(scenario.ctx());
+    scenario.next_tx(@0xA);
+    let (mut composition, mut vault, vault_admin_cap) = fixture(scenario.ctx());
     let mut pool = new_pool(&mut composition, &mut vault, &vault_admin_cap);
     plugin::install(&mut vault, &vault_admin_cap);
     plugin::uninstall(&mut vault, &vault_admin_cap);
-    plugin::redeem_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 1);
+    scenario.next_tx(STRANGER);
+    let root = scenario.take_shared<AccumulatorRoot>();
+    plugin::redeem_all_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, &root);
     abort
 }
 
@@ -479,7 +486,7 @@ fun wrong_derived_pool_aborts() {
         composition::new_for_testing<FOREIGN_SHARE>("Foreign", 1_000, ctx);
     let mut wrong_pool = pool::new<SHARE, CURRENCY>(foreign.uid_mut(&foreign_cap));
     plugin::install(&mut vault, &vault_admin_cap);
-    plugin::redeem_and_deposit_for_testing(
+    plugin::redeem_settled_value_and_deposit_for_testing(
         &mut vault,
         &mut composition,
         &mut wrong_pool,
@@ -488,20 +495,200 @@ fun wrong_derived_pool_aborts() {
     abort
 }
 
-#[test, expected_failure(abort_code = ENoValueToRedeem, location = action)]
-fun settled_value_boundary_reaches_action_guard() {
+#[test, expected_failure(abort_code = EPoolNotDerivedFromParent, location = pool)]
+fun wrong_derived_pool_aborts_on_empty_snapshot() {
     let mut scenario = test_scenario::begin(@0x0);
     sui::accumulator::create_for_testing(scenario.ctx());
+    scenario.next_tx(@0xA);
     let (mut composition, mut vault, vault_admin_cap) = fixture(scenario.ctx());
-    let mut pool = new_pool(&mut composition, &mut vault, &vault_admin_cap);
+    let (mut foreign, foreign_cap) =
+        composition::new_for_testing<FOREIGN_SHARE>("Foreign", 1_000, scenario.ctx());
+    let mut wrong_pool = pool::new<SHARE, CURRENCY>(foreign.uid_mut(&foreign_cap));
     plugin::install(&mut vault, &vault_admin_cap);
     scenario.next_tx(STRANGER);
     let root = scenario.take_shared<AccumulatorRoot>();
-    let value = balance::settled_funds_value<CURRENCY>(
-        &root,
-        object::id(&composition).to_address(),
-    );
-    assert_eq!(value, 0);
-    plugin::redeem_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, value);
+    plugin::redeem_all_and_deposit_for_testing(&mut vault, &mut composition, &mut wrong_pool, &root);
     abort
+}
+
+/// A zero settled snapshot through the real entry, twice: the cap is leased
+/// and returned each time (borrow events only), nothing is deposited, and no
+/// funds event is emitted.
+#[test]
+fun zero_snapshot_crank_is_an_idempotent_no_op_with_only_borrow_events() {
+    let mut scenario = test_scenario::begin(@0x0);
+    sui::accumulator::create_for_testing(scenario.ctx());
+    scenario.next_tx(@0xA);
+    let (mut composition, mut vault, vault_admin_cap) = fixture(scenario.ctx());
+    let cap_id = vault.cap_id();
+    let mut pool = new_pool(&mut composition, &mut vault, &vault_admin_cap);
+    let mut stake = stake::new(balance::create_for_testing<SHARE>(100), scenario.ctx());
+    pool.register_stake(&mut stake);
+    plugin::install(&mut vault, &vault_admin_cap);
+
+    scenario.next_tx(STRANGER);
+    let root = scenario.take_shared<AccumulatorRoot>();
+    assert_eq!(
+        balance::settled_funds_value<CURRENCY>(&root, object::id(&composition).to_address()),
+        0,
+    );
+    plugin::redeem_all_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, &root);
+    plugin::redeem_all_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, &root);
+    let borrowed_events =
+        event::events_by_type<plugin::CompositionVaultCapabilityBorrowedEvent<SHARE, CURRENCY>>();
+    assert_eq!(borrowed_events.length(), 2);
+    assert_borrowed_event(
+        &borrowed_events[1],
+        object::id(&vault).to_address(),
+        cap_id.to_address(),
+        object::id(&composition).to_address(),
+        object::id(&pool).to_address(),
+    );
+    assert_eq!(
+        event::events_by_type<plugin::CompositionFundsDepositedEvent<SHARE, CURRENCY>>().length(),
+        0,
+    );
+    assert_eq!(event::events_by_type<pool::RoyaltyDepositedEvent<SHARE, CURRENCY>>().length(), 0);
+    assert_eq!(pool.cumulative_deposits(), 0);
+    test_scenario::return_shared(root);
+
+    let (cap, receipt) = vault.borrow_as_admin(&vault_admin_cap);
+    assert_eq!(object::id(&cap), cap_id);
+    vault.put_back(cap, receipt);
+    pool.unregister_stake(&mut stake);
+    balance::destroy_for_testing(stake::destroy(stake));
+    plugin::uninstall(&mut vault, &vault_admin_cap);
+    destroy(pool);
+    cleanup(composition, vault, vault_admin_cap);
+    scenario.end();
+}
+
+/// With no registered stake the crank leases and returns the cap but redeems
+/// nothing; once a stake registers the same funds are deposited and reported.
+#[test]
+fun zero_staker_crank_is_a_no_op_until_a_stake_registers() {
+    let ctx = &mut tx_context::dummy();
+    let (mut composition, mut vault, vault_admin_cap) = fixture(ctx);
+    let composition_id = object::id(&composition);
+    let cap_id = vault.cap_id();
+    let mut pool = new_pool(&mut composition, &mut vault, &vault_admin_cap);
+    let pool_id = object::id(&pool);
+    plugin::install(&mut vault, &vault_admin_cap);
+    balance::create_for_testing<CURRENCY>(333).send_funds(composition_id.to_address());
+
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 333);
+    assert_eq!(
+        event::events_by_type<plugin::CompositionVaultCapabilityBorrowedEvent<SHARE, CURRENCY>>().length(),
+        1,
+    );
+    assert_eq!(
+        event::events_by_type<plugin::CompositionFundsDepositedEvent<SHARE, CURRENCY>>().length(),
+        0,
+    );
+    assert_eq!(pool.cumulative_deposits(), 0);
+    assert_eq!(pool.balance().value(), 0);
+
+    let mut stake = stake::new(balance::create_for_testing<SHARE>(100), ctx);
+    pool.register_stake(&mut stake);
+    let reward_per_share_before = pool.cumulative_reward_per_share();
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 333);
+    let funds_events = event::events_by_type<plugin::CompositionFundsDepositedEvent<SHARE, CURRENCY>>();
+    assert_eq!(funds_events.length(), 1);
+    assert_funds_event(
+        &funds_events[0],
+        object::id(&vault).to_address(),
+        cap_id.to_address(),
+        composition_id.to_address(),
+        pool_id.to_address(),
+        0,
+        333,
+        100,
+        reward_per_share_before,
+        pool.cumulative_reward_per_share(),
+        0,
+        pool.carry(),
+        0,
+        333,
+        333,
+    );
+    let reward = pool.claim_rewards(&mut stake);
+    assert_eq!(reward.value(), 333);
+
+    pool.unregister_stake(&mut stake);
+    balance::destroy_for_testing(stake::destroy(stake));
+    balance::destroy_for_testing(reward);
+    plugin::uninstall(&mut vault, &vault_admin_cap);
+    destroy(pool);
+    cleanup(composition, vault, vault_admin_cap);
+}
+
+/// Batch safety through the plugin: three compositions in one transaction,
+/// one with a zero snapshot and one with no stakers; only the funded, staked
+/// one deposits, and every vault gets its cap back.
+#[test]
+fun batch_with_no_op_items_still_deposits_the_funded_staked_composition() {
+    let mut scenario = test_scenario::begin(@0x0);
+    sui::accumulator::create_for_testing(scenario.ctx());
+    scenario.next_tx(@0xA);
+    let (mut composition_a, mut vault_a, admin_a) = fixture(scenario.ctx());
+    let (mut composition_b, mut vault_b, admin_b) = fixture(scenario.ctx());
+    let (mut composition_c, mut vault_c, admin_c) = fixture(scenario.ctx());
+    let mut pool_a = new_pool(&mut composition_a, &mut vault_a, &admin_a);
+    let mut pool_b = new_pool(&mut composition_b, &mut vault_b, &admin_b);
+    let mut pool_c = new_pool(&mut composition_c, &mut vault_c, &admin_c);
+    let mut stake_a = stake::new(balance::create_for_testing<SHARE>(10), scenario.ctx());
+    let mut stake_b = stake::new(balance::create_for_testing<SHARE>(10), scenario.ctx());
+    pool_a.register_stake(&mut stake_a);
+    pool_b.register_stake(&mut stake_b);
+    plugin::install(&mut vault_a, &admin_a);
+    plugin::install(&mut vault_b, &admin_b);
+    plugin::install(&mut vault_c, &admin_c);
+    balance::create_for_testing<CURRENCY>(1_000).send_funds(object::id(&composition_a).to_address());
+    balance::create_for_testing<CURRENCY>(250).send_funds(object::id(&composition_c).to_address());
+
+    scenario.next_tx(STRANGER);
+    let root = scenario.take_shared<AccumulatorRoot>();
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut vault_a, &mut composition_a, &mut pool_a, 1_000);
+    plugin::redeem_all_and_deposit_for_testing(&mut vault_b, &mut composition_b, &mut pool_b, &root);
+    plugin::redeem_settled_value_and_deposit_for_testing(&mut vault_c, &mut composition_c, &mut pool_c, 250);
+    let funds_events = event::events_by_type<plugin::CompositionFundsDepositedEvent<SHARE, CURRENCY>>();
+    assert_eq!(funds_events.length(), 1);
+    let (event_vault_id, _, event_composition_id, event_pool_id, _, _, _, _, _, _, _, _, _, _, _, amount) =
+        plugin::funds_deposited_event_fields(&funds_events[0]);
+    assert_eq!(event_vault_id, object::id(&vault_a).to_address());
+    assert_eq!(event_composition_id, object::id(&composition_a).to_address());
+    assert_eq!(event_pool_id, object::id(&pool_a).to_address());
+    assert_eq!(amount, 1_000);
+    assert_eq!(
+        event::events_by_type<plugin::CompositionVaultCapabilityBorrowedEvent<SHARE, CURRENCY>>().length(),
+        3,
+    );
+    assert_eq!(pool_a.cumulative_deposits(), 1_000);
+    assert_eq!(pool_b.cumulative_deposits(), 0);
+    assert_eq!(pool_c.cumulative_deposits(), 0);
+    test_scenario::return_shared(root);
+
+    let (cap, receipt) = vault_a.borrow_as_admin(&admin_a);
+    vault_a.put_back(cap, receipt);
+    let (cap, receipt) = vault_b.borrow_as_admin(&admin_b);
+    vault_b.put_back(cap, receipt);
+    let (cap, receipt) = vault_c.borrow_as_admin(&admin_c);
+    vault_c.put_back(cap, receipt);
+    let reward = pool_a.claim_rewards(&mut stake_a);
+    assert_eq!(reward.value(), 1_000);
+    pool_a.unregister_stake(&mut stake_a);
+    pool_b.unregister_stake(&mut stake_b);
+    balance::destroy_for_testing(stake::destroy(stake_a));
+    balance::destroy_for_testing(stake::destroy(stake_b));
+    balance::destroy_for_testing(reward);
+    plugin::uninstall(&mut vault_a, &admin_a);
+    plugin::uninstall(&mut vault_b, &admin_b);
+    plugin::uninstall(&mut vault_c, &admin_c);
+    destroy(pool_a);
+    destroy(pool_b);
+    destroy(pool_c);
+    cleanup(composition_a, vault_a, admin_a);
+    cleanup(composition_b, vault_b, admin_b);
+    cleanup(composition_c, vault_c, admin_c);
+    scenario.end();
 }

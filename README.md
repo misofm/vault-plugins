@@ -24,8 +24,8 @@ the routed-stake core already exposes permissionless sweeping.
 
 | Package | Permissionless operations after install |
 |---|---|
-| [`composition_royalty_pool_plugin`](./composition_royalty_pool_plugin) | Receive or redeem Composition revenue into its canonical royalty pool. |
-| [`recording_royalty_pool_plugin`](./recording_royalty_pool_plugin) | Receive or redeem Recording revenue into its canonical royalty pool. |
+| [`composition_royalty_pool_plugin`](./composition_royalty_pool_plugin) | Receive Composition coins or redeem the full canonical settled snapshot into its canonical royalty pool. |
+| [`recording_royalty_pool_plugin`](./recording_royalty_pool_plugin) | Receive Recording coins or redeem the full canonical settled snapshot into its canonical royalty pool. |
 | [`release_revenue_distributor_plugin`](./release_revenue_distributor_plugin) | Receive Release coins or redeem the full canonical settled snapshot and distribute it through the immutable tracklist. |
 
 Pool creation is deliberately not a plugin API. Administrators call the
@@ -46,11 +46,15 @@ Installation controls whether the package witness may lease the raw cap; it
 does not authorize the transaction sender. Anyone can crank an installed
 operation, and the Action fixes the target and funds flow.
 
-The Release redemption crank accepts the canonical `AccumulatorRoot`, never a
-caller-selected amount. It snapshots and redeems all funds settled for the
-Release at the start of the consensus commit. A zero snapshot is an idempotent
-no-op; excess beyond the framework's `u64` snapshot and later funds remain for
-a subsequent crank. This prevents permissionless callers from fragmenting a
+Every redemption crank (`redeem_all_and_distribute` for a Release,
+`redeem_all_and_deposit` for a Composition or Recording) accepts the canonical
+`AccumulatorRoot`, never a caller-selected amount. It snapshots and redeems all
+funds settled for the object at the start of the consensus commit. A zero
+snapshot is an idempotent no-op, and the pool cranks are also a no-op that
+redeems nothing while the pool has no registered stake, so a batched
+permissionless crank never aborts on an already-cranked or unstaked item.
+Excess beyond the framework's `u64` snapshot and later funds remain for a
+subsequent crank. This prevents permissionless callers from fragmenting a
 settlement into dust-sized distributions.
 
 ## Dependency pinning
@@ -71,8 +75,11 @@ sui move test --build-env testnet --coverage
 sui move coverage summary
 ```
 
-Positive receive paths use transferred `Coin` tickets in the Move VM. A
-separate test pins the zero settled-accumulator boundary; positive consensus
+Positive receive paths use transferred `Coin` tickets in the Move VM. The
+redemption cranks are exercised against a real zero settled snapshot, and the
+pool plugins' funded path runs the production observe/Action/put-back/report
+sequence through the Action's test-only settled-value helper (the Move VM
+cannot settle a positive `AccumulatorRoot` snapshot); positive consensus
 settlement remains a network integration check.
 
 ## License
