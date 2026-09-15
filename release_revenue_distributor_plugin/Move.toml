@@ -5,11 +5,11 @@ license = "Apache 2.0"
 authors = ["Miso Labs, Inc. (build@miso.network)"]
 
 [dependencies]
-release_revenue_distributor = { git = "https://github.com/misofm/musicos-actions.git", subdir = "release_revenue_distributor", rev = "a3f5f9112a072cd78b914e97b2a012daa286e85e" }
+release_revenue_distributor = { git = "https://github.com/misofm/musicos-actions.git", subdir = "release_revenue_distributor", rev = "e4a6b40322170d1743c1e2216c9a2083bd8e4b98" }
 vault = { git = "https://github.com/misofm/vault.git", rev = "987f774eb1b4f692e0b3974d6a5acc55c8004cc5" }
 musicos = { git = "https://github.com/misofm/musicos.git", rev = "a8dfc74f2f234e79574821f096c8463aec19411e" }
-composition_royalty_pool = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_royalty_pool", rev = "a3f5f9112a072cd78b914e97b2a012daa286e85e", modes = ["test"] }
-composition_routed_stake = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_routed_stake", rev = "a3f5f9112a072cd78b914e97b2a012daa286e85e", modes = ["test"] }
-recording_royalty_pool = { git = "https://github.com/misofm/musicos-actions.git", subdir = "recording_royalty_pool", rev = "a3f5f9112a072cd78b914e97b2a012daa286e85e", modes = ["test"] }
+composition_royalty_pool = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_royalty_pool", rev = "e4a6b40322170d1743c1e2216c9a2083bd8e4b98", modes = ["test"] }
+composition_routed_stake = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_routed_stake", rev = "e4a6b40322170d1743c1e2216c9a2083bd8e4b98", modes = ["test"] }
+recording_royalty_pool = { git = "https://github.com/misofm/musicos-actions.git", subdir = "recording_royalty_pool", rev = "e4a6b40322170d1743c1e2216c9a2083bd8e4b98", modes = ["test"] }
 royalty_pool = { git = "https://github.com/misofm/royalty-pool.git", rev = "3bfb265aa82e711b407c28849090ee3705ef2c68", modes = ["test"] }
-routed_stake = { git = "https://github.com/misofm/routed-stake.git", rev = "1b78a928211ffc1eb3a15cc89d808234eb8ccc59", modes = ["test"] }
+routed_stake = { git = "https://github.com/misofm/routed-stake.git", rev = "1aafaa96c6cc2cebb2ce08e79f149302d097d71d", modes = ["test"] }
