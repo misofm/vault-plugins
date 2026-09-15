@@ -14,6 +14,7 @@ use std::unit_test::{assert_eq, destroy};
 use sui::balance;
 use sui::coin::{Self, Coin};
 use sui::event;
+use recording_royalty_pool_plugin::witness::Witness;
 use sui::test_scenario;
 use vault::vault::{Self, Vault, VaultAdminCap};
 
@@ -62,7 +63,7 @@ fun clean(
 }
 
 #[test]
-fun direct_action_is_silent_and_receive_event_is_complete() {
+fun action_receive_event_preserves_coin_ids_and_pool_accounting() {
     let mut s = test_scenario::begin(@0xA);
     let (mut r, mut v, a) = make(s.ctx());
     let rid = object::id(&r);
@@ -81,9 +82,7 @@ fun direct_action_is_silent_and_receive_event_is_complete() {
     let (ac, br) = v.borrow_as_admin(&a);
     action::receive_and_deposit(&mut r, &ac, &mut p, vector[t]);
     v.put_back(ac, br);
-    assert_eq!(event::events_by_type<plugin::RecordingVaultCapabilityBorrowedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 0);
-    assert_eq!(event::events_by_type<plugin::RecordingCoinsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 0);
-    assert_eq!(event::events_by_type<plugin::RecordingFundsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>().length(), 0);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), 0);
 
     plugin::install(&mut v, &a);
     let z = coin::from_balance(balance::create_for_testing<CURRENCY>(0), s.ctx());
@@ -100,27 +99,29 @@ fun direct_action_is_silent_and_receive_event_is_complete() {
     let r0 = p.cumulative_reward_per_share();
     let k0 = p.carry();
     let d0 = p.cumulative_deposits();
+    let event_count_before = event::num_events();
+    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
+    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::receive_and_deposit_for_testing(&mut v, &mut r, &mut p, vector[zt, ct]);
+    assert_eq!(event::num_events() - event_count_before, 4);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
     let b1 = p.balance().value();
     let r1 = p.cumulative_reward_per_share();
     let k1 = p.carry();
     let d1 = p.cumulative_deposits();
 
-    let es = event::events_by_type<plugin::RecordingVaultCapabilityBorrowedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
+    let es = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>();
     assert_eq!(es.length(), 1);
-    let (x, y, z, w, q, b, c) = plugin::borrowed_event_fields(&es[0]);
+    let (x, y, b, c) = vault::capability_borrowed_by_plugin_event_fields(&es[0]);
     assert_eq!(x, object::id(&v).to_address());
     assert_eq!(y, capid.to_address());
-    assert_eq!(z, rid.to_address());
-    assert_eq!(w, cid.to_address());
-    assert_eq!(q, pid.to_address());
     assert!(b);
     assert!(!c);
 
-    let es = event::events_by_type<plugin::RecordingCoinsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
+    let es = event::events_by_type<action::RecordingCoinsDepositedEvent<SHARE, COMPOSITION_SHARE, CURRENCY>>();
     assert_eq!(es.length(), 1);
-    let (x, y, z, w, q, a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, ab, ac) = plugin::coins_deposited_event_fields(&es[0]);
-    assert_eq!(x, object::id(&v).to_address());
+    let (z, w, y, q, _, a0, a1, a2, a3, a4, a5, a6, a7, a8, ac) = action::coins_deposited_event_fields(&es[0]);
     assert_eq!(y, capid.to_address());
     assert_eq!(z, rid.to_address());
     assert_eq!(w, cid.to_address());
@@ -134,8 +135,6 @@ fun direct_action_is_silent_and_receive_event_is_complete() {
     assert_eq!(a6, k1);
     assert_eq!(a7, d0);
     assert_eq!(a8, d1);
-    assert!(a9);
-    assert!(ab);
     assert_eq!(ac, vector[zi.to_address(), ci.to_address()]);
 
     let reward = p.claim_rewards(&mut st);

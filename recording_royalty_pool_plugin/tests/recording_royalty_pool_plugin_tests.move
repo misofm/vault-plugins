@@ -15,6 +15,7 @@ use sui::accumulator::AccumulatorRoot;
 use sui::balance;
 use sui::coin::{Self, Coin};
 use sui::event;
+use recording_royalty_pool_plugin::witness::Witness;
 use sui::test_scenario;
 use vault::vault::{Self, Vault, VaultAdminCap};
 
@@ -120,14 +121,26 @@ fun direct_action_and_capless_plugin_have_identical_effects() {
     transfer::public_transfer(plugin_coin, recording_id.to_address());
     scenario.next_tx(STRANGER);
     let plugin_ticket = test_scenario::receiving_ticket_by_id<Coin<CURRENCY>>(plugin_coin_id);
+    let event_count_before = event::num_events();
+    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
+    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::receive_and_deposit_for_testing(
         &mut vault,
         &mut recording,
         &mut pool,
         vector[plugin_ticket],
     );
+    assert_eq!(event::num_events() - event_count_before, 4);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
     balance::create_for_testing<CURRENCY>(333).send_funds(recording_id.to_address());
+    let event_count_before = event::num_events();
+    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length();
+    let return_count_before = event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut recording, &mut pool, 333);
+    assert_eq!(event::num_events() - event_count_before, 4);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<RecordingAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::events_by_type<vault::VaultCapabilityReturnedEvent<RecordingAdminCap<SHARE>>>().length(), return_count_before + 1);
 
     assert_eq!(pool.cumulative_deposits(), 666);
     let deposits = event::events_by_type<pool::RoyaltyDepositedEvent<SHARE, CURRENCY>>();
