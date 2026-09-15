@@ -80,16 +80,17 @@ fun assert_plugin_event_silence() {
 
 fun assert_authorized_event(
     vault: &Vault<CompositionAdminCap<SHARE>>,
-    _vault_admin_cap: &VaultAdminCap<CompositionAdminCap<SHARE>>,
+    vault_admin_cap: &VaultAdminCap<CompositionAdminCap<SHARE>>,
     cap_id: sui::object::ID,
 ) {
     let events =
         event::events_by_type<vault::PluginAuthorizedEvent<CompositionAdminCap<SHARE>, Witness>>();
     assert_eq!(events.length(), 1);
-    let (vault_id, installed_cap_id, _admin_cap_id, plugins_id, count, installed) =
+    let (vault_id, installed_cap_id, admin_cap_id, plugins_id, count, installed) =
         vault::plugin_authorized_event_vault_id(&events[0]);
     assert_eq!(vault_id, object::id(vault).to_address());
     assert_eq!(installed_cap_id, cap_id.to_address());
+    assert_eq!(admin_cap_id, object::id(vault_admin_cap).to_address());
     assert_eq!(plugins_id, object::id(vault.authorized_plugins()).to_address());
     assert_eq!(count, 1);
     assert!(installed);
@@ -97,16 +98,17 @@ fun assert_authorized_event(
 
 fun assert_revoked_event(
     vault: &Vault<CompositionAdminCap<SHARE>>,
-    _vault_admin_cap: &VaultAdminCap<CompositionAdminCap<SHARE>>,
+    vault_admin_cap: &VaultAdminCap<CompositionAdminCap<SHARE>>,
     cap_id: sui::object::ID,
 ) {
     let events =
         event::events_by_type<vault::PluginRevokedEvent<CompositionAdminCap<SHARE>, Witness>>();
     assert_eq!(events.length(), 1);
-    let (vault_id, uninstalled_cap_id, _admin_cap_id, plugins_id, count, installed) =
+    let (vault_id, uninstalled_cap_id, admin_cap_id, plugins_id, count, installed) =
         vault::plugin_revoked_event_vault_id(&events[0]);
     assert_eq!(vault_id, object::id(vault).to_address());
     assert_eq!(uninstalled_cap_id, cap_id.to_address());
+    assert_eq!(admin_cap_id, object::id(vault_admin_cap).to_address());
     assert_eq!(plugins_id, object::id(vault.authorized_plugins()).to_address());
     assert_eq!(count, 0);
     assert!(!installed);
