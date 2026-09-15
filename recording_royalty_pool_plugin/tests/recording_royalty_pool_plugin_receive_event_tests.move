@@ -62,7 +62,7 @@ fun clean(
 }
 
 #[test]
-fun action_receive_event_preserves_coin_ids_and_pool_accounting() {
+fun action_receive_event_preserves_coin_count_and_pool_accounting() {
     let mut s = test_scenario::begin(@0xA);
     let (mut r, mut v, a) = make(s.ctx());
     let rid = object::id(&r);
@@ -120,7 +120,7 @@ fun action_receive_event_preserves_coin_ids_and_pool_accounting() {
     assert_eq!(a6, k1);
     assert_eq!(a7, d0);
     assert_eq!(a8, d1);
-    assert_eq!(ac, vector[zi.to_address(), ci.to_address()]);
+    assert_eq!(ac, 2);
 
     let reward = p.claim_rewards(&mut st);
     assert_eq!(reward.value(), 333);

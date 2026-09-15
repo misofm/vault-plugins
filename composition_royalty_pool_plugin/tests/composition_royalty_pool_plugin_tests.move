@@ -127,7 +127,7 @@ fun assert_coins_event(
     cumulative_deposits_after: u128,
     coin_ids: vector<address>,
 ) {
-    let (event_composition_id, event_cap_id, event_pool_id, _, event_pool_balance_before, event_pool_balance_after, event_staked_shares, event_reward_per_share_before, event_reward_per_share_after, event_carry_before, event_carry_after, event_cumulative_deposits_before, event_cumulative_deposits_after, event_coin_ids) = action::coins_deposited_event_fields(event);
+    let (event_composition_id, event_cap_id, event_pool_id, _, event_pool_balance_before, event_pool_balance_after, event_staked_shares, event_reward_per_share_before, event_reward_per_share_after, event_carry_before, event_carry_after, event_cumulative_deposits_before, event_cumulative_deposits_after, event_coin_count) = action::coins_deposited_event_fields(event);
     assert_eq!(event_cap_id, cap_id);
     assert_eq!(event_composition_id, composition_id);
     assert_eq!(event_pool_id, pool_id);
@@ -140,7 +140,7 @@ fun assert_coins_event(
     assert_eq!(event_carry_after, carry_after);
     assert_eq!(event_cumulative_deposits_before, cumulative_deposits_before);
     assert_eq!(event_cumulative_deposits_after, cumulative_deposits_after);
-    assert_eq!(event_coin_ids, coin_ids);
+    assert_eq!(event_coin_count, coin_ids.length());
 }
 
 fun assert_funds_event(
