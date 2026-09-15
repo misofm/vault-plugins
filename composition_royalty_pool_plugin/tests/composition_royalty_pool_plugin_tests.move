@@ -74,10 +74,6 @@ fun cleanup(
     destroy(composition)
 }
 
-fun assert_plugin_event_silence() {
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(), 0);
-}
-
 fun assert_authorized_event(
     vault: &Vault<CompositionAdminCap<SHARE>>,
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<SHARE>>,
@@ -112,21 +108,6 @@ fun assert_revoked_event(
     assert_eq!(plugins_id, object::id(vault.authorized_plugins()).to_address());
     assert_eq!(count, 0);
     assert!(!installed);
-}
-
-fun assert_borrowed_event(
-    event: &vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>,
-    vault_id: address,
-    cap_id: address,
-    _composition_id: address,
-    _pool_id: address,
-) {
-    let (event_vault_id, event_cap_id, active, available) =
-        vault::capability_borrowed_by_plugin_event_fields(event);
-    assert_eq!(event_vault_id, vault_id);
-    assert_eq!(event_cap_id, cap_id);
-    assert!(active);
-    assert!(!available);
 }
 
 fun assert_coins_event(
@@ -227,8 +208,6 @@ fun direct_action_and_capless_plugin_have_identical_effects() {
         event::events_by_type<pool::RoyaltyDepositedEvent<SHARE, CURRENCY>>();
     assert_eq!(direct_deposits.length(), 1);
     let (direct_pool, direct_value, _, _, _, _, _, _, _) = pool::deposited_event_fields(&direct_deposits[0]);
-    assert_plugin_event_silence();
-
     plugin::install(&mut vault, &vault_admin_cap);
     let events_before_is_installed = event::num_events();
     assert!(plugin::is_installed(&vault));
@@ -258,30 +237,17 @@ fun direct_action_and_capless_plugin_have_identical_effects() {
     let plugin_carry_before = pool.carry();
     let plugin_cumulative_deposits_before = pool.cumulative_deposits();
     let event_count_before = event::num_events();
-    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length();
     plugin::receive_and_deposit_for_testing(
         &mut vault,
         &mut composition,
         &mut pool,
         vector[plugin_zero_ticket, plugin_ticket],
     );
-    assert_eq!(event::num_events() - event_count_before, 3);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 2);
     let plugin_pool_balance_after = pool.balance().value();
     let plugin_reward_per_share_after = pool.cumulative_reward_per_share();
     let plugin_carry_after = pool.carry();
     let plugin_cumulative_deposits_after = pool.cumulative_deposits();
-    let borrowed_events = event::events_by_type<
-        vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>
-    >();
-    assert_eq!(borrowed_events.length(), 1);
-    assert_borrowed_event(
-        &borrowed_events[0],
-        object::id(&vault).to_address(),
-        cap_id.to_address(),
-        composition_id.to_address(),
-        pool_id.to_address(),
-    );
     let coin_events = event::events_by_type<action::CompositionCoinsDepositedEvent<SHARE, CURRENCY>>();
     assert_eq!(coin_events.length(), 1);
     assert_coins_event(
@@ -308,24 +274,12 @@ fun direct_action_and_capless_plugin_have_identical_effects() {
     let funds_carry_before = pool.carry();
     let funds_cumulative_deposits_before = pool.cumulative_deposits();
     let event_count_before = event::num_events();
-    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 333);
-    assert_eq!(event::num_events() - event_count_before, 3);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 2);
     let funds_pool_balance_after = pool.balance().value();
     let funds_reward_per_share_after = pool.cumulative_reward_per_share();
     let funds_carry_after = pool.carry();
     let funds_cumulative_deposits_after = pool.cumulative_deposits();
-    let borrowed_events =
-        event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>();
-    assert_eq!(borrowed_events.length(), 2);
-    assert_borrowed_event(
-        &borrowed_events[1],
-        object::id(&vault).to_address(),
-        cap_id.to_address(),
-        composition_id.to_address(),
-        pool_id.to_address(),
-    );
     let funds_events = event::events_by_type<action::CompositionFundsDepositedEvent<SHARE, CURRENCY>>();
     assert_eq!(funds_events.length(), 1);
     assert_funds_event(
@@ -465,10 +419,10 @@ fun wrong_derived_pool_aborts_on_empty_snapshot() {
 }
 
 /// A zero settled snapshot through the real entry, twice: the cap is leased
-/// and returned each time (generic borrow and return events only), nothing is deposited, and no
+/// and returned each time; borrowing is silent, nothing is deposited, and no
 /// funds event is emitted.
 #[test]
-fun zero_snapshot_crank_is_idempotent_with_only_custody_events() {
+fun zero_snapshot_crank_is_idempotent_and_silent() {
     let mut scenario = test_scenario::begin(@0x0);
     sui::accumulator::create_for_testing(scenario.ctx());
     scenario.next_tx(@0xA);
@@ -486,25 +440,11 @@ fun zero_snapshot_crank_is_idempotent_with_only_custody_events() {
         0,
     );
     let event_count_before = event::num_events();
-    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length();
     plugin::redeem_all_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, &root);
-    assert_eq!(event::num_events() - event_count_before, 1);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 0);
     let event_count_before = event::num_events();
-    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length();
     plugin::redeem_all_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, &root);
-    assert_eq!(event::num_events() - event_count_before, 1);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
-    let borrowed_events =
-        event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>();
-    assert_eq!(borrowed_events.length(), 2);
-    assert_borrowed_event(
-        &borrowed_events[1],
-        object::id(&vault).to_address(),
-        cap_id.to_address(),
-        object::id(&composition).to_address(),
-        object::id(&pool).to_address(),
-    );
+    assert_eq!(event::num_events() - event_count_before, 0);
     assert_eq!(
         event::events_by_type<action::CompositionFundsDepositedEvent<SHARE, CURRENCY>>().length(),
         0,
@@ -538,14 +478,8 @@ fun zero_staker_crank_is_a_no_op_until_a_stake_registers() {
     balance::create_for_testing<CURRENCY>(333).send_funds(composition_id.to_address());
 
     let event_count_before = event::num_events();
-    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 333);
-    assert_eq!(event::num_events() - event_count_before, 1);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
-    assert_eq!(
-        event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(),
-        1,
-    );
+    assert_eq!(event::num_events() - event_count_before, 0);
     assert_eq!(
         event::events_by_type<action::CompositionFundsDepositedEvent<SHARE, CURRENCY>>().length(),
         0,
@@ -557,10 +491,8 @@ fun zero_staker_crank_is_a_no_op_until_a_stake_registers() {
     pool.register_stake(&mut stake);
     let reward_per_share_before = pool.cumulative_reward_per_share();
     let event_count_before = event::num_events();
-    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 333);
-    assert_eq!(event::num_events() - event_count_before, 3);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 2);
     let funds_events = event::events_by_type<action::CompositionFundsDepositedEvent<SHARE, CURRENCY>>();
     assert_eq!(funds_events.length(), 1);
     assert_funds_event(
@@ -618,20 +550,14 @@ fun batch_with_no_op_items_still_deposits_the_funded_staked_composition() {
     scenario.next_tx(STRANGER);
     let root = scenario.take_shared<AccumulatorRoot>();
     let event_count_before = event::num_events();
-    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut vault_a, &mut composition_a, &mut pool_a, 1_000);
-    assert_eq!(event::num_events() - event_count_before, 3);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 2);
     let event_count_before = event::num_events();
-    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length();
     plugin::redeem_all_and_deposit_for_testing(&mut vault_b, &mut composition_b, &mut pool_b, &root);
-    assert_eq!(event::num_events() - event_count_before, 1);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 0);
     let event_count_before = event::num_events();
-    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut vault_c, &mut composition_c, &mut pool_c, 250);
-    assert_eq!(event::num_events() - event_count_before, 1);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 0);
     let funds_events = event::events_by_type<action::CompositionFundsDepositedEvent<SHARE, CURRENCY>>();
     assert_eq!(funds_events.length(), 1);
     let (event_composition_id, _, event_pool_id, amount, _, _, _, _, _, _, _, _, _) =
@@ -639,10 +565,6 @@ fun batch_with_no_op_items_still_deposits_the_funded_staked_composition() {
     assert_eq!(event_composition_id, object::id(&composition_a).to_address());
     assert_eq!(event_pool_id, object::id(&pool_a).to_address());
     assert_eq!(amount, 1_000);
-    assert_eq!(
-        event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(),
-        3,
-    );
     assert_eq!(pool_a.cumulative_deposits(), 1_000);
     assert_eq!(pool_b.cumulative_deposits(), 0);
     assert_eq!(pool_c.cumulative_deposits(), 0);
@@ -687,22 +609,14 @@ fun duplicate_crank_in_one_tx_is_not_a_no_op() {
     pool.register_stake(&mut stake);
     plugin::install(&mut vault, &vault_admin_cap);
     let event_count_before = event::num_events();
-    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 333);
-    assert_eq!(event::num_events() - event_count_before, 3);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 2);
     let event_count_before = event::num_events();
-    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 333);
-    assert_eq!(event::num_events() - event_count_before, 3);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 2);
     assert_eq!(pool.cumulative_deposits(), 666);
     assert_eq!(
         event::events_by_type<action::CompositionFundsDepositedEvent<SHARE, CURRENCY>>().length(),
-        2,
-    );
-    assert_eq!(
-        event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(),
         2,
     );
     balance::destroy_for_testing(pool.claim_rewards(&mut stake));
@@ -725,10 +639,8 @@ fun deposit_event_amount_matches_pool_delta() {
     plugin::install(&mut vault, &vault_admin_cap);
     let before = pool.cumulative_deposits();
     let event_count_before = event::num_events();
-    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, 1_000_003);
-    assert_eq!(event::num_events() - event_count_before, 3);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 2);
     let funds_events = event::events_by_type<action::CompositionFundsDepositedEvent<SHARE, CURRENCY>>();
     assert_eq!(funds_events.length(), 1);
     let (_, _, _, amount, _, _, _, _, _, _, _, d0, d1) =
@@ -761,10 +673,8 @@ fun u64_max_snapshot_through_the_plugin_deposits_without_abort() {
     plugin::install(&mut vault, &vault_admin_cap);
     let max = std::u64::max_value!();
     let event_count_before = event::num_events();
-    let borrow_count_before = event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length();
     plugin::redeem_settled_value_and_deposit_for_testing(&mut vault, &mut composition, &mut pool, max);
-    assert_eq!(event::num_events() - event_count_before, 3);
-    assert_eq!(event::events_by_type<vault::VaultCapabilityBorrowedByPluginEvent<CompositionAdminCap<SHARE>, Witness>>().length(), borrow_count_before + 1);
+    assert_eq!(event::num_events() - event_count_before, 2);
     let funds_events = event::events_by_type<action::CompositionFundsDepositedEvent<SHARE, CURRENCY>>();
     assert_eq!(funds_events.length(), 1);
     let (_, _, _, amount, b0, b1, _, _, _, _, _, d0, d1) =

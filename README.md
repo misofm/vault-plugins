@@ -53,9 +53,10 @@ underlying Vault, Action, royalty-pool, and routed-stake events, which are the
 canonical source for custody and business facts. Plugins do not re-read state
 to create wrapper notifications.
 
-Consumers migrating from earlier plugin generations should read capability
-usage from the Vault events and deposit/distribution results from the matching
-Action and extension events. The plugin-specific borrow, coin-deposit,
+Consumers migrating from earlier plugin generations should read permanent
+custody and permission changes from Vault events and deposit/distribution
+results from the matching Action and extension events. Temporary borrowing and
+return are silent. The plugin-specific borrow, coin-deposit,
 fund-deposit, coin-distribution, and fund-distribution event types are removed;
 their similarly named Action events remain. Operational entry signatures and
 install/uninstall signatures and `is_installed` behavior are unchanged. Historical event decoding
