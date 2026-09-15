@@ -23,15 +23,15 @@ manifest_digest = "E41BBD67BE8940D26C79D78B028477EF5B33BA217A1282C78ACB344CF8A5E
 deps = { std = "MoveStdlib", sui = "Sui" }
 
 [pinned.mainnet.composition_royalty_pool]
-source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_royalty_pool", rev = "e4a6b40322170d1743c1e2216c9a2083bd8e4b98" }
+source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_royalty_pool", rev = "671c8a36b0e2156edd8f0673632b4fd914a24d16" }
 use_environment = "mainnet"
-manifest_digest = "DC8B4C046DC5188E3112172313EFE3A65B255843E29AB76BF0E9960B383A256F"
+manifest_digest = "80DFB5198CCFAD5139073114A142536F42C03A622029444FA0DED2860C0D4B4D"
 deps = { hikida = "hikida", musicos = "musicos", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.mainnet.composition_royalty_pool_plugin]
 source = { root = true }
 use_environment = "mainnet"
-manifest_digest = "65B897A5888F6B04DD89F7DB62B86728D31901AF7A70AAE6D641C2227D303B20"
+manifest_digest = "DBC84F46612692BB11FA49CF7F72821631C8F89891524670A5BB6BE22710CBE8"
 deps = { composition_royalty_pool = "composition_royalty_pool", hikida = "hikida", musicos = "musicos", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.mainnet.hikida]
@@ -59,7 +59,7 @@ manifest_digest = "E41BBD67BE8940D26C79D78B028477EF5B33BA217A1282C78ACB344CF8A5E
 deps = { std = "MoveStdlib", sui = "Sui" }
 
 [pinned.mainnet.vault]
-source = { git = "https://github.com/misofm/vault.git", subdir = ".", rev = "987f774eb1b4f692e0b3974d6a5acc55c8004cc5" }
+source = { git = "https://github.com/misofm/vault.git", subdir = ".", rev = "b1e49bf8e8e2fc174f29cc685ac72c9d18b9db75" }
 use_environment = "mainnet"
 manifest_digest = "E41BBD67BE8940D26C79D78B028477EF5B33BA217A1282C78ACB344CF8A5ECF6"
 deps = { std = "MoveStdlib", sui = "Sui" }
@@ -83,15 +83,15 @@ manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332
 deps = { std = "MoveStdlib", sui = "Sui" }
 
 [pinned.testnet.composition_royalty_pool]
-source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_royalty_pool", rev = "e4a6b40322170d1743c1e2216c9a2083bd8e4b98" }
+source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_royalty_pool", rev = "671c8a36b0e2156edd8f0673632b4fd914a24d16" }
 use_environment = "testnet"
-manifest_digest = "587D7DBC082865555774D328EBAA75E41A4DF03B46DB6FBE1A2B135174ECD9CA"
+manifest_digest = "51DC5FCAB77F077A0D64EA242420CEB0A1CC4E4FD128D09175195B69FEA29480"
 deps = { hikida = "hikida", musicos = "musicos", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.testnet.composition_royalty_pool_plugin]
 source = { root = true }
 use_environment = "testnet"
-manifest_digest = "F275E3C9DA1B434DA28EE92EAE8193B179975D33152CDF9AB8B9B16FA88750A1"
+manifest_digest = "F9FE0B12B236144D4EFEFAFC7093FCA45C0A15AADFF08A9B636DF400B7265D6C"
 deps = { composition_royalty_pool = "composition_royalty_pool", hikida = "hikida", musicos = "musicos", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.testnet.hikida]
@@ -119,7 +119,7 @@ manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332
 deps = { std = "MoveStdlib", sui = "Sui" }
 
 [pinned.testnet.vault]
-source = { git = "https://github.com/misofm/vault.git", subdir = ".", rev = "987f774eb1b4f692e0b3974d6a5acc55c8004cc5" }
+source = { git = "https://github.com/misofm/vault.git", subdir = ".", rev = "b1e49bf8e8e2fc174f29cc685ac72c9d18b9db75" }
 use_environment = "testnet"
 manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332A87"
 deps = { std = "MoveStdlib", sui = "Sui" }
