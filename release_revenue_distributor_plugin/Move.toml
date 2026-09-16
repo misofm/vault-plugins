@@ -5,11 +5,11 @@ license = "Apache 2.0"
 authors = ["Miso Labs, Inc. (build@miso.network)"]
 
 [dependencies]
-release_revenue_distributor = { git = "https://github.com/misofm/musicos-actions.git", subdir = "release_revenue_distributor", rev = "1dea0cbbde3f44479e9493ae0182689928d8d5ce" }
-vault = { git = "https://github.com/misofm/vault.git", rev = "cb45a50dabe326a332efb61aa219c8205873c31c" }
-musicos = { git = "https://github.com/misofm/musicos.git", rev = "1119e51864718294210b47111387c2f0f25aaf14" }
-composition_royalty_pool = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_royalty_pool", rev = "1dea0cbbde3f44479e9493ae0182689928d8d5ce", modes = ["test"] }
-composition_routed_stake = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_routed_stake", rev = "1dea0cbbde3f44479e9493ae0182689928d8d5ce", modes = ["test"] }
-recording_royalty_pool = { git = "https://github.com/misofm/musicos-actions.git", subdir = "recording_royalty_pool", rev = "1dea0cbbde3f44479e9493ae0182689928d8d5ce", modes = ["test"] }
-royalty_pool = { git = "https://github.com/misofm/royalty-pool.git", rev = "768012d6e8ae7eca07750d0ef7ef09f04f21cd32", modes = ["test"] }
-routed_stake = { git = "https://github.com/misofm/routed-stake.git", rev = "58c63b9c7e8f73f376f747d559b3e4c7be283d2f", modes = ["test"] }
+release_revenue_distributor = { git = "https://github.com/misofm/musicos-actions.git", subdir = "release_revenue_distributor", rev = "9985ad7da357f8ae9de700338ba6a40b316362eb" }
+vault = { git = "https://github.com/misofm/vault.git", rev = "dad40fbcb3c6e0596c210828193302dd3552ff82" }
+musicos = { git = "https://github.com/misofm/musicos.git", rev = "f7a2be77ecc4429a1c5ff70800490b1946b1defb" }
+composition_royalty_pool = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_royalty_pool", rev = "9985ad7da357f8ae9de700338ba6a40b316362eb", modes = ["test"] }
+composition_routed_stake = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_routed_stake", rev = "9985ad7da357f8ae9de700338ba6a40b316362eb", modes = ["test"] }
+recording_royalty_pool = { git = "https://github.com/misofm/musicos-actions.git", subdir = "recording_royalty_pool", rev = "9985ad7da357f8ae9de700338ba6a40b316362eb", modes = ["test"] }
+royalty_pool = { git = "https://github.com/misofm/royalty-pool.git", rev = "3aa2461c8abc8dc1153a39669fbac8f346bf0aa9", modes = ["test"] }
+routed_stake = { git = "https://github.com/misofm/routed-stake.git", rev = "7ca690e81b39c8be1b3dc9e52764e5beebcc12f0", modes = ["test"] }
