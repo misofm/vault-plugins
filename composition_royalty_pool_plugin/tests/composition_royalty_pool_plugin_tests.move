@@ -6,6 +6,8 @@ module composition_royalty_pool_plugin::composition_royalty_pool_plugin_tests;
 
 use composition_royalty_pool::composition_royalty_pool as action;
 use composition_royalty_pool_plugin::composition_royalty_pool_plugin as plugin;
+use composition_royalty_pool_plugin::share as test_share;
+use composition_royalty_pool_plugin::share::Share as SHARE;
 use musicos::composition::{Self, Composition, CompositionAdminCap};
 use royalty_pool::pool::{Self, RoyaltyPool};
 use royalty_pool::stake::{Self, Stake};
@@ -25,7 +27,6 @@ const ENotVaultAdmin: u64 = 0;
 
 const STRANGER: address = @0x51;
 
-public struct SHARE() has drop;
 public struct FOREIGN_SHARE() has drop;
 public struct CURRENCY() has drop;
 
@@ -57,7 +58,11 @@ fun new_pool(
     vault_admin_cap: &VaultAdminCap<CompositionAdminCap<SHARE>>,
 ): RoyaltyPool<SHARE, CURRENCY> {
     let (cap, receipt) = vault.borrow_as_admin(vault_admin_cap);
-    let pool = action::new_pool<SHARE, CURRENCY>(composition, &cap);
+    let ctx = &mut tx_context::dummy();
+    let (share_currency, supply) = test_share::bootstrap_currency(ctx);
+    let pool = action::new_pool<SHARE, CURRENCY>(composition, &cap, &share_currency);
+    balance::destroy_for_testing(supply);
+    destroy(share_currency);
     vault.put_back(cap, receipt);
     pool
 }
@@ -391,7 +396,7 @@ fun wrong_derived_pool_aborts() {
     let (mut composition, mut vault, vault_admin_cap) = fixture(ctx);
     let (mut foreign, foreign_cap) =
         composition::new_for_testing<FOREIGN_SHARE>("Foreign", 1_000, ctx);
-    let mut wrong_pool = pool::new<SHARE, CURRENCY>(foreign.uid_mut(&foreign_cap));
+    let mut wrong_pool = pool::new_for_testing<SHARE, CURRENCY>(foreign.uid_mut(&foreign_cap));
     plugin::install(&mut vault, &vault_admin_cap);
     plugin::redeem_settled_value_and_deposit_for_testing(
         &mut vault,
@@ -410,7 +415,7 @@ fun wrong_derived_pool_aborts_on_empty_snapshot() {
     let (mut composition, mut vault, vault_admin_cap) = fixture(scenario.ctx());
     let (mut foreign, foreign_cap) =
         composition::new_for_testing<FOREIGN_SHARE>("Foreign", 1_000, scenario.ctx());
-    let mut wrong_pool = pool::new<SHARE, CURRENCY>(foreign.uid_mut(&foreign_cap));
+    let mut wrong_pool = pool::new_for_testing<SHARE, CURRENCY>(foreign.uid_mut(&foreign_cap));
     plugin::install(&mut vault, &vault_admin_cap);
     scenario.next_tx(STRANGER);
     let root = scenario.take_shared<AccumulatorRoot>();
@@ -530,13 +535,34 @@ fun zero_staker_crank_is_a_no_op_until_a_stake_registers() {
 fun batch_with_no_op_items_still_deposits_the_funded_staked_composition() {
     let mut scenario = test_scenario::begin(@0x0);
     sui::accumulator::create_for_testing(scenario.ctx());
+    let (share_currency, supply) = test_share::bootstrap_currency(scenario.ctx());
     scenario.next_tx(@0xA);
     let (mut composition_a, mut vault_a, admin_a) = fixture(scenario.ctx());
     let (mut composition_b, mut vault_b, admin_b) = fixture(scenario.ctx());
     let (mut composition_c, mut vault_c, admin_c) = fixture(scenario.ctx());
-    let mut pool_a = new_pool(&mut composition_a, &mut vault_a, &admin_a);
-    let mut pool_b = new_pool(&mut composition_b, &mut vault_b, &admin_b);
-    let mut pool_c = new_pool(&mut composition_c, &mut vault_c, &admin_c);
+    let (cap_a, receipt_a) = vault_a.borrow_as_admin(&admin_a);
+    let mut pool_a = action::new_pool<SHARE, CURRENCY>(
+        &mut composition_a,
+        &cap_a,
+        &share_currency,
+    );
+    vault_a.put_back(cap_a, receipt_a);
+    let (cap_b, receipt_b) = vault_b.borrow_as_admin(&admin_b);
+    let mut pool_b = action::new_pool<SHARE, CURRENCY>(
+        &mut composition_b,
+        &cap_b,
+        &share_currency,
+    );
+    vault_b.put_back(cap_b, receipt_b);
+    let (cap_c, receipt_c) = vault_c.borrow_as_admin(&admin_c);
+    let mut pool_c = action::new_pool<SHARE, CURRENCY>(
+        &mut composition_c,
+        &cap_c,
+        &share_currency,
+    );
+    vault_c.put_back(cap_c, receipt_c);
+    balance::destroy_for_testing(supply);
+    destroy(share_currency);
     let mut stake_a = stake::new(balance::create_for_testing<SHARE>(10), scenario.ctx());
     let mut stake_b = stake::new(balance::create_for_testing<SHARE>(10), scenario.ctx());
     pool_a.register_stake(&mut stake_a);

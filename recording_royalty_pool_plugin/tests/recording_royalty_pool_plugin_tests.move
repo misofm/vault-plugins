@@ -8,6 +8,8 @@ use musicos::recording::{Self, Recording, RecordingAdminCap};
 use musicos::test_helpers;
 use recording_royalty_pool::recording_royalty_pool as action;
 use recording_royalty_pool_plugin::recording_royalty_pool_plugin as plugin;
+use recording_royalty_pool_plugin::share as test_share;
+use recording_royalty_pool_plugin::share::Share as SHARE;
 use royalty_pool::pool::{Self, RoyaltyPool};
 use royalty_pool::stake::{Self, Stake};
 use std::unit_test::{assert_eq, destroy};
@@ -26,7 +28,6 @@ const ENotVaultAdmin: u64 = 0;
 
 const STRANGER: address = @0x51;
 
-public struct SHARE() has drop;
 public struct FOREIGN_SHARE() has drop;
 public struct COMPOSITION_SHARE() has drop;
 public struct CURRENCY() has drop;
@@ -62,7 +63,15 @@ fun new_pool(
     vault_admin_cap: &VaultAdminCap<RecordingAdminCap<SHARE>>,
 ): RoyaltyPool<SHARE, CURRENCY> {
     let (cap, receipt) = vault.borrow_as_admin(vault_admin_cap);
-    let pool = action::new_pool<SHARE, COMPOSITION_SHARE, CURRENCY>(recording, &cap);
+    let ctx = &mut tx_context::dummy();
+    let (share_currency, supply) = test_share::bootstrap_currency(ctx);
+    let pool = action::new_pool<SHARE, COMPOSITION_SHARE, CURRENCY>(
+        recording,
+        &cap,
+        &share_currency,
+    );
+    balance::destroy_for_testing(supply);
+    destroy(share_currency);
     vault.put_back(cap, receipt);
     pool
 }
@@ -223,7 +232,7 @@ fun wrong_derived_pool_aborts() {
             test_helpers::fake_id(ctx),
             ctx,
         );
-    let mut wrong_pool = pool::new<SHARE, CURRENCY>(foreign.uid_mut(&foreign_cap));
+    let mut wrong_pool = pool::new_for_testing<SHARE, CURRENCY>(foreign.uid_mut(&foreign_cap));
     plugin::install(&mut vault, &vault_admin_cap);
     plugin::redeem_settled_value_and_deposit_for_testing(
         &mut vault,
@@ -245,7 +254,7 @@ fun wrong_derived_pool_aborts_on_empty_snapshot() {
             test_helpers::fake_id(scenario.ctx()),
             scenario.ctx(),
         );
-    let mut wrong_pool = pool::new<SHARE, CURRENCY>(foreign.uid_mut(&foreign_cap));
+    let mut wrong_pool = pool::new_for_testing<SHARE, CURRENCY>(foreign.uid_mut(&foreign_cap));
     plugin::install(&mut vault, &vault_admin_cap);
     scenario.next_tx(STRANGER);
     let root = scenario.take_shared<AccumulatorRoot>();

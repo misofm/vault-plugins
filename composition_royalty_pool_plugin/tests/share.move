@@ -9,7 +9,7 @@
 #[test_only]
 module composition_royalty_pool_plugin::share;
 
-use sui::coin::TreasuryCap;
+use sui::balance::Balance;
 use sui::coin_registry::{Self, Currency};
 
 public struct Share has key { id: UID }
@@ -17,9 +17,9 @@ public struct Share has key { id: UID }
 /// Run the production currency issuance flow: register the currency, delete
 /// the metadata cap, and return the currency with its treasury cap.
 /// Requires a system (@0x0) sender context.
-public fun bootstrap_currency(ctx: &mut TxContext): (Currency<Share>, TreasuryCap<Share>) {
+public fun bootstrap_currency(ctx: &mut TxContext): (Currency<Share>, Balance<Share>) {
     let mut registry = coin_registry::create_coin_data_registry_for_testing(ctx);
-    let (initializer, treasury_cap) = registry.new_currency<Share>(
+    let (initializer, mut treasury_cap) = registry.new_currency<Share>(
         6,
         b"SHR".to_string(),
         b"Share".to_string(),
@@ -30,6 +30,8 @@ public fun bootstrap_currency(ctx: &mut TxContext): (Currency<Share>, TreasuryCa
     let (mut currency, metadata_cap) =
         coin_registry::finalize_unwrap_for_testing(initializer, ctx);
     currency.delete_metadata_cap(metadata_cap);
+    let supply = treasury_cap.mint_balance(100_000_000_000_000);
+    currency.make_supply_fixed(treasury_cap);
     std::unit_test::destroy(registry);
-    (currency, treasury_cap)
+    (currency, supply)
 }

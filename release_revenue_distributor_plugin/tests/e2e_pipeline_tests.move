@@ -13,6 +13,8 @@ use musicos::test_helpers;
 use musicos::track;
 use recording_royalty_pool::recording_royalty_pool as recording_pool_action;
 use release_revenue_distributor_plugin::release_revenue_distributor_plugin as release_plugin;
+use release_revenue_distributor_plugin::share as test_share;
+use release_revenue_distributor_plugin::share::Share as SHARE;
 use royalty_pool::pool;
 use royalty_pool::stake;
 use routed_stake::routed_stake;
@@ -25,8 +27,6 @@ use vault::vault::{Self, Vault, VaultAdminCap};
 
 const STRANGER: address = @0x51;
 
-public struct COMPOSITION_SHARE() has drop;
-public struct RECORDING_SHARE() has drop;
 public struct CURRENCY() has drop;
 
 fun new_vault<Cap: key + store>(
@@ -43,12 +43,13 @@ fun new_vault<Cap: key + store>(
 fun release_plugin_to_recording_action_to_routed_composition_pool() {
     let mut scenario = test_scenario::begin(@0x0);
     sui::accumulator::create_for_testing(scenario.ctx());
+    let (share_currency, share_supply) = test_share::bootstrap_currency(scenario.ctx());
     scenario.next_tx(@0xA);
     let (mut composition, composition_admin_cap) =
-        composition::new_for_testing<COMPOSITION_SHARE>("Composition", 2_000, scenario.ctx());
+        composition::new_for_testing<SHARE>("Composition", 2_000, scenario.ctx());
     let composition_id = object::id(&composition);
     let (mut recording, recording_admin_cap) =
-        recording::new_for_testing<RECORDING_SHARE, COMPOSITION_SHARE>(
+        recording::new_for_testing<SHARE, SHARE>(
             composition_id,
             scenario.ctx(),
         );
@@ -68,24 +69,28 @@ fun release_plugin_to_recording_action_to_routed_composition_pool() {
         new_vault(release_admin_cap, scenario.ctx());
 
     let mut composition_pool =
-        composition_pool_action::new_pool<COMPOSITION_SHARE, CURRENCY>(
+        composition_pool_action::new_pool<SHARE, CURRENCY>(
             &mut composition,
             &composition_admin_cap,
+            &share_currency,
         );
     let mut composition_holder =
-        stake::new(balance::create_for_testing<COMPOSITION_SHARE>(100), scenario.ctx());
+        stake::new(balance::create_for_testing<SHARE>(100), scenario.ctx());
     composition_pool.register_stake(&mut composition_holder);
 
     let (recording_admin_cap, receipt) =
         recording_vault.borrow_as_admin(&recording_vault_admin_cap);
     let mut recording_pool =
-        recording_pool_action::new_pool<RECORDING_SHARE, COMPOSITION_SHARE, CURRENCY>(
+        recording_pool_action::new_pool<SHARE, SHARE, CURRENCY>(
             &mut recording,
             &recording_admin_cap,
+            &share_currency,
         );
     recording_vault.put_back(recording_admin_cap, receipt);
+    balance::destroy_for_testing(share_supply);
+    destroy(share_currency);
 
-    balance::create_for_testing<RECORDING_SHARE>(100)
+    balance::create_for_testing<SHARE>(100)
         .send_funds(composition_id.to_address());
     let mut routed = routed_action::create_stake(
         &mut composition,

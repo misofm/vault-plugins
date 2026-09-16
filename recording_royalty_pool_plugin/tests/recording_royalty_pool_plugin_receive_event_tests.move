@@ -44,7 +44,7 @@ fun pool(
     a: &VaultAdminCap<RecordingAdminCap<SHARE>>,
 ): RoyaltyPool<SHARE, CURRENCY> {
     let (c, b) = v.borrow_as_admin(a);
-    let p = action::new_pool<SHARE, COMPOSITION_SHARE, CURRENCY>(r, &c);
+    let p = pool::new_for_testing<SHARE, CURRENCY>(r.uid_mut(&c));
     v.put_back(c, b);
     p
 }

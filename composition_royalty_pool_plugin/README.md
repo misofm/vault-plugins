@@ -20,7 +20,9 @@ that status next commit. Each executor keeps the same business sequence:
 3. `vault.put_back(cap, receipt)`
 
 The plugin has no pool-creation or pool-address API. Use the public Action
-directly for `new_pool` and `pool_address`. Validation, receiving, redemption,
+directly for `new_pool(composition, admin_cap, share_currency)` and
+`pool_address`; the final argument binds creation to the verified
+`Currency<CompositionShare>`. Validation, receiving, redemption,
 deposit accounting, derivation checks, transfers, and dependency events remain
 owned by the Action and royalty-pool core. Installation and uninstallation are
 represented by the Vault's typed `PluginAuthorizedEvent` and
