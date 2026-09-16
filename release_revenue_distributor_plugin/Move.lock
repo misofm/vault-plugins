@@ -107,15 +107,15 @@ manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332
 deps = { std = "MoveStdlib", sui = "Sui" }
 
 [pinned.testnet.composition_routed_stake]
-source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_routed_stake", rev = "3bec12d2491efbc0cafd1eca8c9c36fcca8b0ef3" }
+source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_routed_stake", rev = "1dea0cbbde3f44479e9493ae0182689928d8d5ce" }
 use_environment = "testnet"
-manifest_digest = "46FA6E7D177BD19308EEF0FA223E6A45A0379DA80E8416405AC668231AC4FA5F"
+manifest_digest = "0F1F5A2ED697B5967B5356CA43B7900377AD5E58DAAD74DF64EE827F956FCAEB"
 deps = { hikida = "hikida", musicos = "musicos", routed_stake = "routed_stake", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.testnet.composition_royalty_pool]
-source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_royalty_pool", rev = "3bec12d2491efbc0cafd1eca8c9c36fcca8b0ef3" }
+source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "composition_royalty_pool", rev = "1dea0cbbde3f44479e9493ae0182689928d8d5ce" }
 use_environment = "testnet"
-manifest_digest = "F7B2E3A120223ABE9CC32C3787F57C7624A4C9F8A0A868DFDF7BCB17527EEB6E"
+manifest_digest = "5A24465503F66B7D55F38091A36CCC2AFEE09124EA47039A9A8E9BD99D316889"
 deps = { hikida = "hikida", musicos = "musicos", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.testnet.hikida]
@@ -125,43 +125,43 @@ manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332
 deps = { std = "MoveStdlib", sui = "Sui" }
 
 [pinned.testnet.musicos]
-source = { git = "https://github.com/misofm/musicos.git", subdir = ".", rev = "eafd01ab1f57ed84f9660beb142d34c98fa9fd04" }
+source = { git = "https://github.com/misofm/musicos.git", subdir = ".", rev = "1119e51864718294210b47111387c2f0f25aaf14" }
 use_environment = "testnet"
-manifest_digest = "26710C0D5A1A191D2F72866FDD1A71B8A39B655318732464526E1D5EF4A3C77E"
+manifest_digest = "CC8BF089DBFEB7FF6044BD54AED96D9E651F1D5CD121ECD392F9D2BD14F10A4B"
 deps = { bps = "bps", share = "share", std = "MoveStdlib", sui = "Sui" }
 
 [pinned.testnet.recording_royalty_pool]
-source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "recording_royalty_pool", rev = "3bec12d2491efbc0cafd1eca8c9c36fcca8b0ef3" }
+source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "recording_royalty_pool", rev = "1dea0cbbde3f44479e9493ae0182689928d8d5ce" }
 use_environment = "testnet"
-manifest_digest = "F7B2E3A120223ABE9CC32C3787F57C7624A4C9F8A0A868DFDF7BCB17527EEB6E"
+manifest_digest = "5A24465503F66B7D55F38091A36CCC2AFEE09124EA47039A9A8E9BD99D316889"
 deps = { hikida = "hikida", musicos = "musicos", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.testnet.release_revenue_distributor]
-source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "release_revenue_distributor", rev = "3bec12d2491efbc0cafd1eca8c9c36fcca8b0ef3" }
+source = { git = "https://github.com/misofm/musicos-actions.git", subdir = "release_revenue_distributor", rev = "1dea0cbbde3f44479e9493ae0182689928d8d5ce" }
 use_environment = "testnet"
-manifest_digest = "9DAE8139A56331070B932E3F7FCBAFE66AE5BEC903E8B4950FE080B1975597F5"
+manifest_digest = "0E9B8B7CC598520E84F518B12404F14C9895F77D48FD5CBC701E45FDAD014C35"
 deps = { hikida = "hikida", musicos = "musicos", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.testnet.release_revenue_distributor_plugin]
 source = { root = true }
 use_environment = "testnet"
-manifest_digest = "87B88035697487EEE473C41577EDBB7AAED0AEA67B9121D1BA1C8B67C3898F2A"
+manifest_digest = "17F527905863AFD601DE510E63D9FA925DAA04F1984359F0A2B14E6C71667999"
 deps = { composition_routed_stake = "composition_routed_stake", composition_royalty_pool = "composition_royalty_pool", musicos = "musicos", recording_royalty_pool = "recording_royalty_pool", release_revenue_distributor = "release_revenue_distributor", routed_stake = "routed_stake", royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui", vault = "vault" }
 
 [pinned.testnet.routed_stake]
-source = { git = "https://github.com/misofm/routed-stake.git", subdir = ".", rev = "7f6a3b5451334fc5d746639d1986fbe9b341e7d2" }
+source = { git = "https://github.com/misofm/routed-stake.git", subdir = ".", rev = "58c63b9c7e8f73f376f747d559b3e4c7be283d2f" }
 use_environment = "testnet"
-manifest_digest = "88CC2968285948C03121FCB568A94F4C1FE30513E817598718A931DD5C4C7875"
+manifest_digest = "9D30EF4461CF8730B89F39838C11874B2FC168618473F7A1DA985BF9D892C66E"
 deps = { royalty_pool = "royalty_pool", std = "MoveStdlib", sui = "Sui" }
 
 [pinned.testnet.royalty_pool]
-source = { git = "https://github.com/misofm/royalty-pool.git", subdir = ".", rev = "44168567bd7a76146fd34cdd70ae77e5a511b259" }
+source = { git = "https://github.com/misofm/royalty-pool.git", subdir = ".", rev = "768012d6e8ae7eca07750d0ef7ef09f04f21cd32" }
 use_environment = "testnet"
-manifest_digest = "9AD740CF450106338DF768A6B452C2E3913D130508E0DA3F0FC2D8B7113BC1AD"
-deps = { hikida = "hikida", std = "MoveStdlib", sui = "Sui" }
+manifest_digest = "899597635FBFFF4F52034BB06EB7BE89B9E0A216EA925CFFCD1CB2137DB638F9"
+deps = { hikida = "hikida", share = "share", std = "MoveStdlib", sui = "Sui" }
 
 [pinned.testnet.share]
-source = { git = "https://github.com/misofm/share.git", subdir = ".", rev = "9dffca5332c8b24d792926fba647d4503a81e5f7" }
+source = { git = "https://github.com/misofm/share.git", subdir = ".", rev = "4778e59a2b166a62a92a5fd34b8be7f0f2550d0a" }
 use_environment = "testnet"
 manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332A87"
 deps = { std = "MoveStdlib", sui = "Sui" }

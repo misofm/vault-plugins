@@ -30,7 +30,8 @@ the routed-stake core already exposes permissionless sweeping.
 
 Pool creation is deliberately not a plugin API. Administrators call the
 corresponding Action directly with the raw cap (including a cap borrowed via
-`Vault::borrow_as_admin`).
+`Vault::borrow_as_admin`) and the verified `Currency<Share>` as the final
+constructor argument.
 
 ## Entry-point caveat
 

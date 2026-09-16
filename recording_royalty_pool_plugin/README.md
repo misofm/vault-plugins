@@ -18,7 +18,9 @@ most once per PTB and retry that status next commit.
 
 Each executor performs only `borrow_as_plugin -> matching Action -> put_back`.
 The plugin exposes no pool creation or address derivation; call the public
-Action directly for `new_pool` and `pool_address`. All validation, arithmetic,
+Action directly for `new_pool(recording, admin_cap, share_currency)` and
+`pool_address`; the final argument binds creation to the verified
+`Currency<RecordingShare>`. All validation, arithmetic,
 transfers, and business rules remain in the Action or royalty-pool core.
 Installation and uninstallation are represented by the Vault's typed
 `PluginAuthorizedEvent` and `PluginRevokedEvent`; operation results come from
