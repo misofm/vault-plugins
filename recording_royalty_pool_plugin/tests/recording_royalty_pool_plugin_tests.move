@@ -72,7 +72,7 @@ fun cleanup(
     mut vault: Vault<RecordingAdminCap<SHARE>>,
     vault_admin_cap: VaultAdminCap<RecordingAdminCap<SHARE>>,
 ) {
-    let cap = vault.withdraw_cap(&vault_admin_cap);
+    let cap = vault.withdraw_vaulted_cap(&vault_admin_cap);
     destroy(vault_admin_cap);
     destroy(vault);
     destroy(cap);
@@ -84,7 +84,7 @@ fun direct_action_and_capless_plugin_have_identical_effects() {
     let mut scenario = test_scenario::begin(@0xA);
     let (mut recording, mut vault, vault_admin_cap) = fixture(scenario.ctx());
     let recording_id = object::id(&recording);
-    let cap_id = vault.cap_id();
+    let cap_id = vault.vaulted_cap_id();
     let mut pool = new_pool(&mut recording, &mut vault, &vault_admin_cap);
     let pool_id = object::id(&pool);
     let mut stake = stake::new(balance::create_for_testing<SHARE>(100), scenario.ctx());

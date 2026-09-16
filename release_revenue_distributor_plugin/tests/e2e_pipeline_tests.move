@@ -163,8 +163,8 @@ fun release_plugin_to_recording_action_to_routed_composition_pool() {
     composition_pool.unregister_stake(&mut composition_holder);
 
     release_plugin::uninstall(&mut release_vault, &release_vault_admin_cap);
-    let recording_admin_cap = recording_vault.withdraw_cap(&recording_vault_admin_cap);
-    let release_admin_cap = release_vault.withdraw_cap(&release_vault_admin_cap);
+    let recording_admin_cap = recording_vault.withdraw_vaulted_cap(&recording_vault_admin_cap);
+    let release_admin_cap = release_vault.withdraw_vaulted_cap(&release_vault_admin_cap);
 
     balance::destroy_for_testing(recording_principal);
     balance::destroy_for_testing(stake::destroy(composition_holder));

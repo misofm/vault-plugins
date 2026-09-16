@@ -43,7 +43,8 @@ modules cannot invoke private entry functions.
 
 Install, uninstall, and `is_installed` remain public composable functions.
 Installation controls whether the package witness may lease the raw cap; it
-does not authorize the transaction sender. Anyone can crank an installed
+does not authorize the transaction sender. In the Move API, `cap` names the
+`VaultAdminCap`; `vaulted_cap` names the borrowed custodied capability. Anyone can crank an installed
 operation, and the Action fixes the target and funds flow.
 
 Installation and uninstallation rely on the Vault's typed
@@ -87,7 +88,11 @@ not as a poisoned item.
 Every immutable dependency is pinned to an exact Git commit. Action dependencies
 use the matching `musicos-actions` package subdirectory so one package identity
 is resolved throughout each build. A fresh plugin package identity must not reuse
-a copied `Published.toml`.
+a copied `Published.toml`. The current Vault layout/API requires a fresh Vault
+package and registry, followed by plugins published against that new identity;
+the checked-in historical publication IDs do not establish this source ABI.
+Action test dependencies and plugin dependencies pin the same Vault revision so
+test-mode resolution compiles every caller against the same API.
 
 ## Verification
 

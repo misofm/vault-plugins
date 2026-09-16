@@ -54,7 +54,7 @@ fun clean(
     mut v: Vault<RecordingAdminCap<SHARE>>,
     a: VaultAdminCap<RecordingAdminCap<SHARE>>,
 ) {
-    let c = v.withdraw_cap(&a);
+    let c = v.withdraw_vaulted_cap(&a);
     destroy(a);
     destroy(v);
     destroy(c);
@@ -67,7 +67,7 @@ fun action_receive_event_preserves_coin_count_and_pool_accounting() {
     let (mut r, mut v, a) = make(s.ctx());
     let rid = object::id(&r);
     let cid = recording::composition_id(&r);
-    let capid = v.cap_id();
+    let capid = v.vaulted_cap_id();
     let mut p = pool(&mut r, &mut v, &a);
     let pid = object::id(&p);
     let mut st = stake::new(balance::create_for_testing<SHARE>(100), s.ctx());

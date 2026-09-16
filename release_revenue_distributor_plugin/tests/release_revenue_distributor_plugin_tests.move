@@ -63,7 +63,7 @@ fun cleanup(
     mut vault: Vault<ReleaseAdminCap>,
     vault_admin_cap: VaultAdminCap<ReleaseAdminCap>,
 ) {
-    let cap = vault.withdraw_cap(&vault_admin_cap);
+    let cap = vault.withdraw_vaulted_cap(&vault_admin_cap);
     destroy(vault_admin_cap);
     destroy(vault);
     destroy(cap);
@@ -111,7 +111,7 @@ fun direct_action_and_capless_plugin_emit_identical_distributions() {
     scenario.next_tx(@0xA);
     let (mut release, mut vault, vault_admin_cap) = fixture(scenario.ctx());
     let release_id = object::id(&release);
-    let cap_id = vault.cap_id();
+    let cap_id = vault.vaulted_cap_id();
 
     let direct_coin = coin::from_balance(
         balance::create_for_testing<CURRENCY>(10_001),
@@ -231,7 +231,7 @@ fun direct_action_and_capless_plugin_emit_identical_distributions() {
 fun install_uninstall_reinstall_events_capture_each_transition() {
     let ctx = &mut tx_context::dummy();
     let (release, mut vault, vault_admin_cap) = fixture(ctx);
-    let cap_id = vault.cap_id();
+    let cap_id = vault.vaulted_cap_id();
 
     plugin::install(&mut vault, &vault_admin_cap);
     assert_authorized_event(&vault, &vault_admin_cap, cap_id);
@@ -269,7 +269,7 @@ fun nonempty_zero_coin_keeps_underlying_business_events() {
     let mut scenario = test_scenario::begin(@0x0);
     let (mut release, mut vault, vault_admin_cap) = fixture(scenario.ctx());
     let release_id = object::id(&release);
-    let cap_id = vault.cap_id();
+    let cap_id = vault.vaulted_cap_id();
     plugin::install(&mut vault, &vault_admin_cap);
     let zero_coin = coin::zero<CURRENCY>(scenario.ctx());
     let zero_coin_id = object::id(&zero_coin);

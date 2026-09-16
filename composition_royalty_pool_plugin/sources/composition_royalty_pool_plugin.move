@@ -15,16 +15,16 @@ use vault::vault::{Vault, VaultAdminCap};
 
 public fun install<CompositionShare>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
-    vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
+    cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
-    vault.authorize_plugin(vault_admin_cap, witness::new());
+    vault.authorize_plugin(cap, witness::new());
 }
 
 public fun uninstall<CompositionShare>(
     vault: &mut Vault<CompositionAdminCap<CompositionShare>>,
-    vault_admin_cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
+    cap: &VaultAdminCap<CompositionAdminCap<CompositionShare>>,
 ) {
-    vault.revoke_plugin<CompositionAdminCap<CompositionShare>, Witness>(vault_admin_cap);
+    vault.revoke_plugin<CompositionAdminCap<CompositionShare>, Witness>(cap);
 }
 
 public fun is_installed<CompositionShare>(
@@ -70,9 +70,9 @@ fun execute_receive_and_deposit<CompositionShare, Currency>(
     pool: &mut RoyaltyPool<CompositionShare, Currency>,
     coins: vector<Receiving<Coin<Currency>>>,
 ) {
-    let (cap, receipt) = vault.borrow_as_plugin(witness::new());
-    action::receive_and_deposit(composition, &cap, pool, coins);
-    vault.put_back(cap, receipt);
+    let (vaulted_cap, receipt) = vault.borrow_as_plugin(witness::new());
+    action::receive_and_deposit(composition, &vaulted_cap, pool, coins);
+    vault.put_back(vaulted_cap, receipt);
 }
 
 fun execute_redeem_all_and_deposit<CompositionShare, Currency>(
@@ -81,9 +81,9 @@ fun execute_redeem_all_and_deposit<CompositionShare, Currency>(
     pool: &mut RoyaltyPool<CompositionShare, Currency>,
     root: &AccumulatorRoot,
 ) {
-    let (cap, receipt) = vault.borrow_as_plugin(witness::new());
-    action::redeem_all_and_deposit(composition, &cap, pool, root);
-    vault.put_back(cap, receipt);
+    let (vaulted_cap, receipt) = vault.borrow_as_plugin(witness::new());
+    action::redeem_all_and_deposit(composition, &vaulted_cap, pool, root);
+    vault.put_back(vaulted_cap, receipt);
 }
 
 #[test_only]
@@ -116,7 +116,7 @@ public fun redeem_settled_value_and_deposit_for_testing<CompositionShare, Curren
     pool: &mut RoyaltyPool<CompositionShare, Currency>,
     value: u64,
 ) {
-    let (cap, receipt) = vault.borrow_as_plugin(witness::new());
-    action::redeem_settled_value_and_deposit_for_testing(composition, &cap, pool, value);
-    vault.put_back(cap, receipt);
+    let (vaulted_cap, receipt) = vault.borrow_as_plugin(witness::new());
+    action::redeem_settled_value_and_deposit_for_testing(composition, &vaulted_cap, pool, value);
+    vault.put_back(vaulted_cap, receipt);
 }

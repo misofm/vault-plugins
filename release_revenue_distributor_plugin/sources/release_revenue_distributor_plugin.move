@@ -14,16 +14,16 @@ use vault::vault::{Vault, VaultAdminCap};
 
 public fun install(
     vault: &mut Vault<ReleaseAdminCap>,
-    vault_admin_cap: &VaultAdminCap<ReleaseAdminCap>,
+    cap: &VaultAdminCap<ReleaseAdminCap>,
 ) {
-    vault.authorize_plugin(vault_admin_cap, witness::new());
+    vault.authorize_plugin(cap, witness::new());
 }
 
 public fun uninstall(
     vault: &mut Vault<ReleaseAdminCap>,
-    vault_admin_cap: &VaultAdminCap<ReleaseAdminCap>,
+    cap: &VaultAdminCap<ReleaseAdminCap>,
 ) {
-    vault.revoke_plugin<ReleaseAdminCap, Witness>(vault_admin_cap);
+    vault.revoke_plugin<ReleaseAdminCap, Witness>(cap);
 }
 
 public fun is_installed(vault: &Vault<ReleaseAdminCap>): bool {
@@ -51,9 +51,9 @@ fun execute_receive_and_distribute<Currency>(
     release: &mut Release,
     coins: vector<Receiving<Coin<Currency>>>,
 ) {
-    let (cap, receipt) = vault.borrow_as_plugin(witness::new());
-    action::receive_and_distribute(release, &cap, coins);
-    vault.put_back(cap, receipt);
+    let (vaulted_cap, receipt) = vault.borrow_as_plugin(witness::new());
+    action::receive_and_distribute(release, &vaulted_cap, coins);
+    vault.put_back(vaulted_cap, receipt);
 }
 
 fun execute_redeem_all_and_distribute<Currency>(
@@ -61,9 +61,9 @@ fun execute_redeem_all_and_distribute<Currency>(
     release: &mut Release,
     root: &AccumulatorRoot,
 ) {
-    let (cap, receipt) = vault.borrow_as_plugin(witness::new());
-    action::redeem_all_and_distribute<Currency>(release, &cap, root);
-    vault.put_back(cap, receipt);
+    let (vaulted_cap, receipt) = vault.borrow_as_plugin(witness::new());
+    action::redeem_all_and_distribute<Currency>(release, &vaulted_cap, root);
+    vault.put_back(vaulted_cap, receipt);
 }
 
 #[test_only]

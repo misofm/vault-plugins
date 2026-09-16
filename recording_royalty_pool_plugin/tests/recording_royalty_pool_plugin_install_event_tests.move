@@ -35,7 +35,7 @@ fun clean(
     mut v: Vault<RecordingAdminCap<SHARE>>,
     a: VaultAdminCap<RecordingAdminCap<SHARE>>,
 ) {
-    let c = v.withdraw_cap(&a);
+    let c = v.withdraw_vaulted_cap(&a);
     destroy(a);
     destroy(v);
     destroy(c);
@@ -47,7 +47,7 @@ fun install_uninstall_events_and_silent_status() {
     let ctx = &mut tx_context::dummy();
     let (r, mut v, a) = make(ctx);
     let vi = object::id(&v).to_address();
-    let ci = v.cap_id().to_address();
+    let ci = v.vaulted_cap_id().to_address();
     let ai = object::id(&a).to_address();
     let pi = object::id(v.authorized_plugins()).to_address();
 

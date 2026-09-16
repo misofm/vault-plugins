@@ -67,7 +67,7 @@ fun cleanup(
     mut vault: Vault<CompositionAdminCap<SHARE>>,
     vault_admin_cap: VaultAdminCap<CompositionAdminCap<SHARE>>,
 ) {
-    let cap = vault.withdraw_cap(&vault_admin_cap);
+    let cap = vault.withdraw_vaulted_cap(&vault_admin_cap);
     destroy(vault_admin_cap);
     destroy(vault);
     destroy(cap);
@@ -181,7 +181,7 @@ fun direct_action_and_capless_plugin_have_identical_effects() {
     let mut scenario = test_scenario::begin(@0xA);
     let (mut composition, mut vault, vault_admin_cap) = fixture(scenario.ctx());
     let composition_id = object::id(&composition);
-    let cap_id = vault.cap_id();
+    let cap_id = vault.vaulted_cap_id();
     let mut pool = new_pool(&mut composition, &mut vault, &vault_admin_cap);
     let pool_id = object::id(&pool);
     let mut stake = stake::new(balance::create_for_testing<SHARE>(100), scenario.ctx());
@@ -427,7 +427,7 @@ fun zero_snapshot_crank_is_idempotent_and_silent() {
     sui::accumulator::create_for_testing(scenario.ctx());
     scenario.next_tx(@0xA);
     let (mut composition, mut vault, vault_admin_cap) = fixture(scenario.ctx());
-    let cap_id = vault.cap_id();
+    let cap_id = vault.vaulted_cap_id();
     let mut pool = new_pool(&mut composition, &mut vault, &vault_admin_cap);
     let mut stake = stake::new(balance::create_for_testing<SHARE>(100), scenario.ctx());
     pool.register_stake(&mut stake);
@@ -471,7 +471,7 @@ fun zero_staker_crank_is_a_no_op_until_a_stake_registers() {
     let ctx = &mut tx_context::dummy();
     let (mut composition, mut vault, vault_admin_cap) = fixture(ctx);
     let composition_id = object::id(&composition);
-    let cap_id = vault.cap_id();
+    let cap_id = vault.vaulted_cap_id();
     let mut pool = new_pool(&mut composition, &mut vault, &vault_admin_cap);
     let pool_id = object::id(&pool);
     plugin::install(&mut vault, &vault_admin_cap);
