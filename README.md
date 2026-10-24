@@ -1,5 +1,11 @@
 # Miso Vault Plugins
 
+> **Archived.** These plugins target the retired `musicos` and `musicos-actions` packages.
+> Royalty pools now take deposits without a cap through `send_funds` and `pool::settle`, and
+> Release revenue goes through
+> [`release-revenue-forwarder`](https://github.com/misofm/release-revenue-forwarder). Plugins for
+> the current packages will be written fresh against [`vault`](https://github.com/misofm/vault).
+
 Thin, first-party adapters that let a Miso capability held by
 [`misofm/vault`](https://github.com/misofm/vault) execute a matching Miso
 Action.
